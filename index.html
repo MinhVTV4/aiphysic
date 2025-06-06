@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Thư Viện Cá Nhân)</title>
+    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Form Nhập Liệu)</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style type="text/tailwindcss">
@@ -14,6 +14,8 @@
         #canvasContainer { flex-grow: 1; min-height: 300px; }
         .auth-form { display: none; } 
         .auth-form.active { display: block; }
+        .structured-form { display: none; }
+        .structured-form.active { display: block; }
         #aiExplanationContainer {
             background-color: #eef2ff;
             border-left: 4px solid #6366f1;
@@ -52,7 +54,6 @@
             background-color: #9ca3af;
             cursor: not-allowed;
         }
-        /* Modal styles */
         #savedExperimentsModal {
             transition: opacity 0.3s ease;
         }
@@ -107,7 +108,40 @@
         <section id="aiControlsSection" class="bg-white p-5 rounded-xl shadow-xl lg:col-span-1 order-2 lg:order-1 flex flex-col">
             <h2 class="text-xl font-semibold text-center mb-1 text-blue-700"><span role="img" aria-label="robot" class="mr-2">🤖</span>Điều Khiển AI</h2>
             <p class="text-center text-xs text-slate-500 mb-4">(Model: gemini-1.5-flash-latest)</p>
-            <textarea id="promptInput" rows="4" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y text-sm shadow-sm mb-3" placeholder="Mô tả thí nghiệm, ví dụ: 'Thả một khối hộp trượt trên mặt phẳng nghiêng 30 độ'"></textarea>
+            
+            <div class="border-t border-slate-200 mt-4 pt-4">
+                <h3 class="text-md font-semibold text-center mb-3 text-slate-700">Tạo thí nghiệm theo mẫu</h3>
+                <select id="experimentTypeSelect" class="w-full p-2 border border-slate-300 rounded-md text-sm">
+                    <option value="">-- Chọn loại thí nghiệm --</option>
+                    <option value="free_fall">Rơi tự do</option>
+                    <option value="projectile">Ném xiên / Ném ngang</option>
+                    <option value="incline">Mặt phẳng nghiêng</option>
+                </select>
+
+                <form id="formFreeFall" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
+                    <div><label class="block text-xs font-medium text-slate-600">Khối lượng vật (kg)</label><input type="number" id="ff_mass" value="1" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    <div><label class="block text-xs font-medium text-slate-600">Độ cao thả (m)</label><input type="number" id="ff_height" value="10" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                </form>
+
+                <form id="formProjectile" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
+                    <div><label class="block text-xs font-medium text-slate-600">Khối lượng vật (kg)</label><input type="number" id="p_mass" value="1" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    <div><label class="block text-xs font-medium text-slate-600">Vận tốc ban đầu (m/s)</label><input type="number" id="p_velocity" value="15" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    <div><label class="block text-xs font-medium text-slate-600">Góc bắn (độ)</label><input type="number" id="p_angle" value="30" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    <div><label class="block text-xs font-medium text-slate-600">Độ cao ban đầu (m)</label><input type="number" id="p_height" value="0" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                </form>
+
+                <form id="formIncline" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
+                    <div><label class="block text-xs font-medium text-slate-600">Góc nghiêng (độ)</label><input type="number" id="i_angle" value="25" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    <div><label class="block text-xs font-medium text-slate-600">Khối lượng vật (kg)</label><input type="number" id="i_mass" value="1" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    <div><label class="block text-xs font-medium text-slate-600">Hệ số ma sát</label><input type="number" id="i_friction" value="0.1" step="0.05" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                </form>
+                <button id="generatePromptFromFormBtn" class="mt-3 w-full bg-slate-600 text-white py-2 rounded-md hover:bg-slate-700 text-sm">Tạo Mô Tả & Điền Vào Ô Dưới</button>
+            </div>
+            
+            <div class="my-4 flex items-center"><div class="flex-grow border-t border-slate-300"></div><span class="px-2 text-sm text-slate-500">Hoặc</span><div class="flex-grow border-t border-slate-300"></div></div>
+
+            <textarea id="promptInput" rows="4" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y text-sm shadow-sm mb-3" placeholder="Mô tả thí nghiệm bằng văn bản tự do..."></textarea>
+            
             <div class="flex space-x-2 mb-3">
                 <button id="sendPromptButton" class="flex-grow py-2.5 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-150 ease-in-out text-sm">
                     <span id="buttonText">Tạo Thí Nghiệm</span>
@@ -185,15 +219,28 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const ai = getAI(app, { backend: new GoogleAIBackend() });
-        const aiModel = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" });
         const auth = getAuth(app);
         const db = getFirestore(app);
+        
+        let aiModel;
+        try {
+            const ai = getAI(app, { backend: new GoogleAIBackend() });
+            aiModel = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" });
+        } catch(e) {
+            console.error("Không thể khởi tạo Firebase AI.", e);
+        }
 
         // --- SYSTEM PROMPTS ---
-        const SYSTEM_PROMPT_FREE_FALL = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể để sử dụng trong một công cụ mô phỏng vật lý 2D (dựa trên Matter.js). Phản hồi CHỈ được là JSON.
+        const COMBINED_SYSTEM_PROMPT_HEADER = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể.
+QUAN TRỌNG NHẤT: Trường "experimentType" BẮT BUỘC phải là một trong các giá trị sau: "free_fall", "projectile_motion", hoặc "inclined_plane". KHÔNG được sử dụng bất kỳ giá trị nào khác.
+Phản hồi của bạn BẮT BUỘC CHỈ LÀ MỘT CHUỖI JSON HỢP LỆ. KHÔNG thêm bất kỳ lời chào, giải thích, markdown, hoặc văn bản nào khác bên ngoài đối tượng JSON.
 
-Loại thí nghiệm: RƠI TỰ DO
+Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
+---
+`;
+
+        const SYSTEM_PROMPT_FREE_FALL = `Loại thí nghiệm: RƠI TỰ DO
+"experimentType": "free_fall",
 Hướng dẫn cho "dimensions_m": Chỉ cung cấp "radius" nếu "shape" là "circle". Chỉ cung cấp "width" và "height" nếu "shape" là "rectangle".
 LƯU Ý QUAN TRỌNG cho "aiExplanation": KHÔNG sử dụng dấu ngoặc kép (") bên trong chuỗi giải thích. Hãy dùng dấu ngoặc đơn (') hoặc các từ đồng nghĩa thay thế.
 Cấu trúc JSON mẫu:
@@ -207,28 +254,16 @@ Cấu trúc JSON mẫu:
       "label": "Tên vật",
       "shape": "circle",
       "mass_kg": 0.5,
-      "dimensions_m": {
-        "radius": 0.1
-      },
-      "initialPosition_m": {
-        "x": 2.5,
-        "y_from_ground": 10
-      },
-      "physicalProperties": {
-        "restitution": 0.6,
-        "friction": 0.1,
-        "frictionAir": 0.01
-      },
+      "dimensions_m": { "radius": 0.1 },
+      "initialPosition_m": { "x": 2.5, "y_from_ground": 10 },
+      "physicalProperties": { "restitution": 0.6, "friction": 0.1, "frictionAir": 0.01 },
       "color": "#3498db"
     }
   ],
   "aiExplanation": "Giải thích ngắn về thí nghiệm và các thông số."
 }`;
-        const SYSTEM_PROMPT_PROJECTILE_MOTION = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể để sử dụng trong một công cụ mô phỏng vật lý 2D (dựa trên Matter.js). Phản hồi CHỈ được là JSON.
-
-Loại thí nghiệm: CHUYỂN ĐỘNG NÉM (NÉM XIÊN, NÉM NGANG)
-Hướng dẫn cho "dimensions_m": Chỉ cung cấp "radius" nếu "shape" là "circle". Chỉ cung cấp "width" và "height" nếu "shape" là "rectangle".
-LƯU Ý QUAN TRỌNG cho "aiExplanation": KHÔNG sử dụng dấu ngoặc kép (") bên trong chuỗi giải thích. Hãy dùng dấu ngoặc đơn (') hoặc các từ đồng nghĩa thay thế.
+        const SYSTEM_PROMPT_PROJECTILE_MOTION = `Loại thí nghiệm: CHUYỂN ĐỘNG NÉM
+"experimentType": "projectile_motion",
 LƯU Ý QUAN TRỌNG cho "initialVelocity_m_s": Nếu người dùng cung cấp độ lớn và góc, bạn BẮT BUỘC phải TỰ TÍNH TOÁN giá trị số của 'vx' và 'vy' rồi điền vào. Ví dụ, với vận tốc 10m/s và góc 30 độ, bạn phải tính vx = 10 * cos(30) ≈ 8.66 và vy = 10 * sin(30) = 5. KHÔNG BAO GIỜ đặt biểu thức tính toán như '10 * Math.cos(...)' vào giá trị JSON.
 Cấu trúc JSON mẫu:
 {
@@ -241,30 +276,18 @@ Cấu trúc JSON mẫu:
       "label": "Vật ném",
       "shape": "circle",
       "mass_kg": 0.5,
-      "dimensions_m": {
-        "radius": 0.1
-      },
-      "initialPosition_m": {
-        "x": 0.5,
-        "y_from_ground": 1.0
-      },
-      "initialVelocity_m_s": {
-        "vx": 10,
-        "vy": 5
-      },
-      "physicalProperties": {
-        "restitution": 0.5,
-        "friction": 0.05,
-        "frictionAir": 0.005
-      },
+      "dimensions_m": { "radius": 0.1 },
+      "initialPosition_m": { "x": 0.5, "y_from_ground": 1.0 },
+      "initialVelocity_m_s": { "vx": 10, "vy": 5 },
+      "physicalProperties": { "restitution": 0.5, "friction": 0.05, "frictionAir": 0.005 },
       "color": "#e74c3c"
     }
   ],
   "aiExplanation": "Giải thích ngắn về thí nghiệm ném, quỹ đạo và các yếu tố ảnh hưởng."
 }`;
-        const SYSTEM_PROMPT_INCLINED_PLANE = `Bạn là một AI chuyên gia về vật lý. Nhiệm vụ là chuyển đổi yêu cầu về thí nghiệm trên MẶT PHẲNG NGHIÊNG thành JSON. Phản hồi CHỈ được là JSON.
-
-Loại thí nghiệm: MẶT PHẲNG NGHIÊNG
+        const SYSTEM_PROMPT_INCLINED_PLANE = `Loại thí nghiệm: MẶT PHẲNG NGHIÊNG
+"experimentType": "inclined_plane",
+Hướng dẫn vị trí: Với mặt phẳng nghiêng xuống sang phải (góc âm), tâm của nó (initialPosition_m.x) nên ở bên trái (ví dụ x=3). Với mặt phẳng nghiêng xuống sang trái (góc dương), tâm của nó nên ở bên phải (ví dụ x=7). Vật trượt phải được đặt ở vị trí cao hơn trên mặt phẳng đó.
 Cấu trúc JSON mẫu:
 {
   "experimentType": "inclined_plane",
@@ -295,22 +318,7 @@ Cấu trúc JSON mẫu:
     }
   ],
   "aiExplanation": "Giải thích về chuyển động của vật trên mặt phẳng nghiêng, vai trò của lực hấp dẫn, phản lực và lực ma sát. KHÔNG dùng dấu ngoặc kép."
-}
-Hướng dẫn:
-1.  "experimentType": Luôn là "inclined_plane".
-2.  "objects": Phải có ít nhất 2 vật thể:
-    - Một mặt phẳng nghiêng: "shape": "rectangle", "isStatic": true, có thuộc tính "angle_degrees".
-    - Một vật trượt: "isStatic": false.
-3.  Vị trí: AI phải tự tính toán "initialPosition_m" cho cả mặt phẳng và vật trượt. Với mặt phẳng nghiêng xuống sang phải (góc âm), tâm của nó (initialPosition_m.x) nên ở bên trái (ví dụ x=3). Với mặt phẳng nghiêng xuống sang trái (góc dương), tâm của nó nên ở bên phải (ví dụ x=7). Vật trượt phải được đặt ở vị trí cao hơn trên mặt phẳng đó.
-4.  "aiExplanation": KHÔNG sử dụng dấu ngoặc kép (") trong chuỗi này.`;
-
-        const COMBINED_SYSTEM_PROMPT_HEADER = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể.
-Dựa vào yêu cầu của người dùng, hãy xác định loại thí nghiệm (ví dụ: "rơi tự do", "chuyển động ném", "mặt phẳng nghiêng") và sau đó tạo JSON theo cấu trúc tương ứng được mô tả dưới đây.
-Phản hồi của bạn BẮT BUỘC CHỈ LÀ MỘT CHUỖI JSON HỢP LỆ. KHÔNG thêm bất kỳ lời chào, giải thích, markdown, hoặc văn bản nào khác bên ngoài đối tượng JSON.
-
-Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
----
-`;
+}`;
 
         // --- DOM Elements & Global Variables ---
         const promptInput = document.getElementById('promptInput');
@@ -334,11 +342,15 @@ Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
         const savedExperimentsModal = document.getElementById('savedExperimentsModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const experimentsList = document.getElementById('experimentsList');
-        const experimentsListContainer = document.getElementById('experimentsListContainer');
         const chartStatus = document.getElementById('chartStatus');
         const exportHeightChartBtn = document.getElementById('exportHeightChart');
         const exportVelocityYChartBtn = document.getElementById('exportVelocityYChart');
-        
+        const experimentTypeSelect = document.getElementById('experimentTypeSelect');
+        const formFreeFall = document.getElementById('formFreeFall');
+        const formProjectile = document.getElementById('formProjectile');
+        const formIncline = document.getElementById('formIncline');
+        const generatePromptFromFormBtn = document.getElementById('generatePromptFromFormBtn');
+
         let currentExperimentData = null;
         let engine, render, runner, trackedBody = null;
         let heightChart, velocityYChart;
@@ -346,7 +358,7 @@ Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
         let lastTimestamp = 0;
         let isChartRecording = false;
         let sleepCounter = 0;
-        const SLEEP_THRESHOLD_COUNT = 120; // Khoảng 2 giây ở 60 FPS
+        const SLEEP_THRESHOLD_COUNT = 120;
         const SLEEP_SPEED_THRESHOLD = 0.1; 
         let fullChartData = { time: [], height: [], velocityY: [] }; 
 
@@ -446,7 +458,6 @@ Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
             savedExperimentsModal.classList.add('flex');
             
             try {
-                // *** FIX: Query không dùng orderBy để tránh lỗi index. Sắp xếp sau khi lấy dữ liệu. ***
                 const q = query(collection(db, "userExperiments"), where("userId", "==", user.uid));
                 const querySnapshot = await getDocs(q);
                 
@@ -455,11 +466,10 @@ Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
                     experiments.push(doc.data());
                 });
 
-                // Sắp xếp trên client
                 experiments.sort((a, b) => {
                     const timeA = a.createdAt?.seconds || 0;
                     const timeB = b.createdAt?.seconds || 0;
-                    return timeB - timeA; // Sắp xếp giảm dần
+                    return timeB - timeA;
                 });
 
                 experimentsList.innerHTML = ''; 
@@ -505,9 +515,10 @@ Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
         
         sendPromptButton.addEventListener("click", async () => {
             if (!aiModel) { 
-                updateAIStatus('error-text', "Mô hình AI chưa sẵn sàng."); 
+                updateAIStatus('error-text', "Không thể khởi tạo mô hình AI."); 
                 return; 
             }
+
             const userPromptText = promptInput.value.trim();
             if (!userPromptText) { 
                 updateAIStatus('error-text', "Vui lòng mô tả thí nghiệm!"); 
@@ -529,8 +540,16 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             buttonSpinner.classList.remove('hidden');
             sendPromptButton.disabled = true;
 
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+
             try {
-                const result = await aiModel.generateContent(fullPrompt);
+                const result = await aiModel.generateContent({
+                    contents: [{ role: "user", parts: [{ text: fullPrompt }] }]
+                }, { signal: controller.signal });
+                
+                clearTimeout(timeoutId);
+
                 const response = result.response;
                 const rawAIResponseText = response.text();
                 let jsonStringToParse = rawAIResponseText;
@@ -562,9 +581,8 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
 
                 try {
                     const parsedExperimentData = JSON.parse(jsonStringToParse);
-                    if (parsedExperimentData.experimentType === "free_fall" || 
-                        parsedExperimentData.experimentType === "projectile_motion" ||
-                        parsedExperimentData.experimentType === "inclined_plane") {
+                    const validTypes = ["free_fall", "projectile_motion", "inclined_plane"];
+                    if (parsedExperimentData.experimentType && validTypes.includes(parsedExperimentData.experimentType)) {
                         currentExperimentData = parsedExperimentData;
                         handleAIDirectedExperiment(parsedExperimentData); 
                         updateAIStatus('success-text', `AI đã tạo cấu hình cho: ${parsedExperimentData.experimentType}. Khởi tạo mô phỏng...`);
@@ -579,10 +597,15 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
                 }
 
             } catch (error) {
-                 console.error("Lỗi khi gọi Gemini API:", error);
-                responseContainer.innerText = `Lỗi API: ${error.message}.`;
-                updateAIStatus('error-text', `Lỗi giao tiếp với AI: ${error.message}.`);
-                aiExplanationContainer.classList.add('hidden');
+                 clearTimeout(timeoutId);
+                 if (error.name === 'AbortError') {
+                    console.error("Yêu cầu AI đã hết thời gian chờ.");
+                    updateAIStatus('error-text', 'Yêu cầu AI quá lâu, vui lòng thử lại.');
+                 } else {
+                    console.error("Lỗi khi gọi Gemini API:", error);
+                    updateAIStatus('error-text', `Lỗi giao tiếp với AI: ${error.message}.`);
+                 }
+                responseContainer.innerText = `Lỗi: ${error.message}.`;
             } finally {
                 buttonText.textContent = 'Tạo Thí Nghiệm';
                 buttonSpinner.classList.add('hidden');
@@ -885,6 +908,48 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
                 if (currentExperimentData) { initMatterSimulationFromAI(currentExperimentData); } 
                 else if (engine) { initPlaceholderSimulation(); }
             }, 300);
+        });
+
+        // --- Structured Form Logic ---
+        experimentTypeSelect.addEventListener('change', () => {
+            const selected = experimentTypeSelect.value;
+            formFreeFall.classList.toggle('active', selected === 'free_fall');
+            formProjectile.classList.toggle('active', selected === 'projectile');
+            formIncline.classList.toggle('active', selected === 'incline');
+        });
+
+        generatePromptFromFormBtn.addEventListener('click', () => {
+            const selected = experimentTypeSelect.value;
+            let promptText = '';
+            switch(selected) {
+                case 'free_fall':
+                    const ff_mass = document.getElementById('ff_mass').value || 1;
+                    const ff_height = document.getElementById('ff_height').value || 10;
+                    promptText = `Thả một vật nặng ${ff_mass}kg từ độ cao ${ff_height} mét.`;
+                    break;
+                case 'projectile':
+                    const p_mass = document.getElementById('p_mass').value || 1;
+                    const p_velocity = document.getElementById('p_velocity').value || 15;
+                    const p_angle = document.getElementById('p_angle').value || 30;
+                    const p_height = document.getElementById('p_height').value || 0;
+                    promptText = `Ném một vật nặng ${p_mass}kg với vận tốc ${p_velocity}m/s theo góc ${p_angle} độ từ độ cao ${p_height} mét.`;
+                    break;
+                case 'incline':
+                    const i_angle = document.getElementById('i_angle').value || 25;
+                    const i_mass = document.getElementById('i_mass').value || 1;
+                    const i_friction = document.getElementById('i_friction').value || 0.1;
+                    promptText = `Một khối hộp ${i_mass}kg trượt trên mặt phẳng nghiêng ${i_angle} độ có hệ số ma sát là ${i_friction}.`;
+                    break;
+                default:
+                    alert('Vui lòng chọn một loại thí nghiệm.');
+                    return;
+            }
+            promptInput.value = promptText;
+            promptInput.focus();
+            promptInput.classList.add('ring-2', 'ring-green-500');
+            setTimeout(() => {
+                promptInput.classList.remove('ring-2', 'ring-green-500');
+            }, 1500);
         });
     </script>
 </body>
