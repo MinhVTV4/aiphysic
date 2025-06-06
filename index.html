@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (AI Director - Fix JSON Advanced)</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <style type="text/tailwindcss">
+        .spinner-border { display: inline-block; width: 2rem; height: 2rem; vertical-align: text-bottom; border: .25em solid currentColor; border-right-color: transparent; border-radius: 50%; -webkit-animation: spinner-border .75s linear infinite; animation: spinner-border .75s linear infinite; }
+        @keyframes spinner-border { to { transform: rotate(360deg); } }
+        .spinner-sm { width: 1rem; height: 1rem; border-width: .2em; }
+        #matterJsSection { display: flex; flex-direction: column; }
+        #canvasContainer { flex-grow: 1; min-height: 300px; }
+        .auth-form { display: none; } 
+        .auth-form.active { display: block; }
+        #aiExplanationContainer {
+            background-color: #eef2ff;
+            border-left: 4px solid #6366f1;
+            padding: 0.75rem 1rem;
+            margin-top: 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.8rem;
+            color: #4338ca;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex flex-col items-center min-h-screen p-3 sm:p-4 selection:bg-blue-200">
+    <header class="w-full max-w-6xl mb-4">
+        <h1 class="text-2xl sm:text-3xl font-bold text-center text-blue-600 py-2">
+            Phòng Thí Nghiệm Vật Lý AI
+        </h1>
+    </header>
+
+    <section id="authSection" class="w-full max-w-md bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-6">
+        <h2 class="text-lg font-semibold text-center text-sky-700 mb-3">Tài Khoản Người Dùng</h2>
+        <div id="userStatusContainer" class="text-center text-sm mb-3">
+            <p id="userStatusText">Đang tải trạng thái người dùng...</p>
+            <button id="signOutButton" class="hidden mt-1 text-xs bg-rose-500 hover:bg-rose-600 text-white py-1 px-3 rounded-md transition-colors">Đăng Xuất</button>
+        </div>
+        <div id="authFormsContainer">
+            <form id="loginForm" class="auth-form space-y-3 p-3 bg-slate-50 rounded-lg">
+                <h3 class="text-md font-medium text-slate-700">Đăng Nhập</h3>
+                <div>
+                    <label for="loginEmail" class="block text-xs font-medium text-slate-600">Email</label>
+                    <input type="email" id="loginEmail" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2">
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-xs font-medium text-slate-600">Mật khẩu</label>
+                    <input type="password" id="loginPassword" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2">
+                </div>
+                <button type="submit" class="w-full text-sm bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md transition-colors">Đăng Nhập</button>
+                <p class="text-xs text-center">Chưa có tài khoản? <a href="#" id="showSignUpLink" class="text-blue-600 hover:underline">Đăng ký</a></p>
+            </form>
+            <form id="signUpForm" class="auth-form space-y-3 p-3 bg-slate-50 rounded-lg">
+                <h3 class="text-md font-medium text-slate-700">Đăng Ký</h3>
+                <div>
+                    <label for="signUpEmail" class="block text-xs font-medium text-slate-600">Email</label>
+                    <input type="email" id="signUpEmail" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2">
+                </div>
+                <div>
+                    <label for="signUpPassword" class="block text-xs font-medium text-slate-600">Mật khẩu</label>
+                    <input type="password" id="signUpPassword" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2">
+                </div>
+                <button type="submit" class="w-full text-sm bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-md transition-colors">Đăng Ký</button>
+                <p class="text-xs text-center">Đã có tài khoản? <a href="#" id="showLoginLink" class="text-green-600 hover:underline">Đăng nhập</a></p>
+            </form>
+            <p id="authStatus" class="text-xs text-center mt-2 min-h-[16px]"></p>
+        </div>
+    </section>
+
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6 px-2 flex-grow">
+        <section id="aiControlsSection" class="bg-white p-5 rounded-xl shadow-xl lg:col-span-1 order-2 lg:order-1 flex flex-col">
+            <h2 class="text-xl font-semibold text-center mb-1 text-blue-700">
+                <span role="img" aria-label="robot" class="mr-2">🤖</span>Điều Khiển AI
+            </h2>
+            <p class="text-center text-xs text-slate-500 mb-4">(Model: gemini-1.5-flash-latest)</p>
+            <textarea id="promptInput" rows="4" 
+                      class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y text-sm shadow-sm mb-3"
+                      placeholder="Mô tả thí nghiệm rơi tự do, ví dụ: 'Thả một quả táo 0.2kg từ độ cao 10m' hoặc 'Cho một hòn bi sắt rơi'"></textarea>
+            <div class="flex space-x-2 mb-3">
+                <button id="sendPromptButton" 
+                        class="flex-grow py-2.5 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-150 ease-in-out text-sm">
+                    <span id="buttonText">Tạo Thí Nghiệm</span>
+                    <div id="buttonSpinner" class="spinner-sm spinner-border hidden" role="status"></div>
+                </button>
+                <button id="saveExperimentButton" title="Lưu cấu hình thí nghiệm hiện tại (JSON từ AI)"
+                        class="py-2.5 px-3 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-green-300 disabled:cursor-not-allowed transition-colors text-sm" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M7.5 2.813A2.5 2.5 0 005 5.237V14.763a2.5 2.5 0 002.5 2.424l8-1.23A2.5 2.5 0 0018 13.537V4.463a2.5 2.5 0 00-2.5-2.424l-8-1.23zM16.5 4.463v9.074l-8 1.23V5.693l8-1.23z"/><path d="M5 16.187A1 1 0 014 15.187V4.813a1 1 0 011.5-.866l8 1.231a1 1 0 01.5.866v9.074a1 1 0 01-1.5.866l-8-1.231zM6 5.877v8.246l7 .923V6.8l-7-.923z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
+                </button>
+            </div>
+            <p id="statusMessage" class="mt-1 font-medium text-xs text-center text-slate-600 min-h-[18px]"></p>
+            <div id="responseContainer" 
+                 class="mt-1 p-3 border border-slate-200 bg-slate-50 rounded-lg min-h-[80px] whitespace-pre-wrap break-words text-xs text-slate-700 shadow-inner relative flex items-center justify-center transition-colors flex-grow overflow-auto">
+                 Phản hồi của AI sẽ hiển thị ở đây (bao gồm JSON nếu có lỗi parse)...
+            </div>
+            <div id="aiExplanationContainer" class="hidden">
+                <h4 class="font-semibold text-sm mb-1">Giải thích từ AI:</h4>
+                <p id="aiExplanationText" class="text-xs"></p>
+            </div>
+        </section>
+
+        <section id="matterJsSection" class="bg-white p-5 rounded-xl shadow-xl lg:col-span-2 order-1 lg:order-2 flex flex-col">
+           <h2 class="text-xl font-semibold text-center mb-2 text-blue-700">
+                <span role="img" aria-label="atom" class="mr-2">⚛️</span>Không Gian Thí Nghiệm
+            </h2>
+            <div id="canvasContainer" class="w-full bg-slate-200 rounded-lg shadow-inner overflow-hidden mx-auto"></div>
+            <p id="matterStatus" class="text-center text-xs text-slate-500 mt-2 min-h-[18px]">Đang tải Matter.js...</p>
+            <div class="mt-3 grid grid-cols-3 gap-2">
+                <button id="addBoxButton" class="py-2 px-2 bg-sky-500 text-white font-medium rounded-md hover:bg-sky-600 transition-colors text-xs shadow disabled:bg-sky-300">Thêm Hộp (Thủ công)</button>
+                <button id="addCircleButton" class="py-2 px-2 bg-teal-500 text-white font-medium rounded-md hover:bg-teal-600 transition-colors text-xs shadow disabled:bg-teal-300">Thêm Tròn (Thủ công)</button>
+                <button id="resetSimulationButton" class="py-2 px-2 bg-rose-500 text-white font-medium rounded-md hover:bg-rose-600 transition-colors text-xs shadow disabled:bg-rose-300">Reset Mô Phỏng</button>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="w-full max-w-6xl mt-8 mb-4 text-center text-xs text-slate-500">
+        <p>&copy; 2024 - Phòng thí nghiệm Vật lý AI.</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+        import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-ai.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDMNnx2yS-yeH_N7m_pCaVInqV2RZG7HSY",
+            authDomain: "aiphysic.firebaseapp.com",
+            projectId: "aiphysic",
+            storageBucket: "aiphysic.appspot.com",
+            messagingSenderId: "922235658911",
+            appId: "1:922235658911:web:5dc24f88c82667e0e478aa"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const ai = getAI(app, { backend: new GoogleAIBackend() });
+        const aiModel = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" });
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const SYSTEM_PROMPT_FREE_FALL = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể để sử dụng trong một công cụ mô phỏng vật lý 2D (dựa trên Matter.js).
+
+QUAN TRỌNG: Phản hồi của bạn CHỈ ĐƯỢC PHÉP là một chuỗi JSON hợp lệ. KHÔNG thêm bất kỳ lời chào, giải thích, markdown, hoặc văn bản nào khác bên ngoài đối tượng JSON.
+
+Mục tiêu:
+Dựa trên yêu cầu của người dùng, hãy tạo một đối tượng JSON mô tả một thí nghiệm "rơi tự do".
+
+Cấu trúc JSON đầu ra BẮT BUỘC:
+{
+  "experimentType": "free_fall",
+  "description": "Một chuỗi mô tả ngắn gọn về thí nghiệm được tạo ra.",
+  "worldParameters": {
+    "gravity_y_m_s2": 9.81,
+    "simulationScale_pixels_per_meter": 50
+  },
+  "objects": [
+    {
+      "id": "object_N",
+      "label": "Tên vật thể (ví dụ: 'Quả bóng', 'Hòn đá')",
+      "shape": "circle | rectangle",
+      "mass_kg": 0.5,
+      "dimensions_m": {
+        "radius": 0.1 
+      },
+      "initialPosition_m": {
+        "x": 2.5,
+        "y_from_ground": 10
+      },
+      "physicalProperties": {
+        "restitution": 0.6,
+        "friction": 0.1,
+        "frictionAir": 0.01
+      },
+      "color": "#3498db"
+    }
+  ],
+  "aiExplanation": "Một đoạn giải thích ngắn gọn, dễ hiểu về các thông số của thí nghiệm và hiện tượng vật lý quan sát được."
+}
+
+Hướng dẫn chi tiết:
+1.  "experimentType": Luôn đặt là "free_fall".
+2.  "description": Tạo mô tả ngắn dựa trên yêu cầu.
+3.  "worldParameters":
+    "gravity_y_m_s2": Mặc định 9.81. Nếu người dùng đề cập môi trường khác (Mặt Trăng ~1.62, Sao Hỏa ~3.71), hãy dùng giá trị đó.
+    "simulationScale_pixels_per_meter": Luôn đặt là 50.
+4.  "objects": Mảng các vật thể.
+    "id": Tạo ID duy nhất (ví dụ: "object_1").
+    "label": Tên vật thể từ yêu cầu (mặc định "Vật thể").
+    "shape": Mặc định "circle". Chọn "rectangle" nếu phù hợp (hộp, gạch).
+    "mass_kg": Trích xuất khối lượng. Mặc định 0.5 kg.
+    "dimensions_m": Trích xuất kích thước. Mặc định bán kính 0.1m cho circle, hoặc 0.2m x 0.2m cho rectangle. Chỉ cung cấp "radius" cho circle, "width"/"height" cho rectangle.
+    "initialPosition_m":
+        "x": Mặc định 2.5 (giữa một canvas rộng khoảng 5-6m).
+        "y_from_ground": Độ cao so với mặt đất. Trích xuất từ yêu cầu (ví dụ "cao 10 mét" => 10). Mặc định 10 mét.
+    "physicalProperties":
+        "restitution": Mặc định 0.5. Điều chỉnh nếu có mô tả vật liệu (ví dụ: "quả bóng cao su" nảy hơn).
+        "friction": Mặc định 0.1.
+        "frictionAir": Mặc định 0.01.
+    "color": Chọn màu phù hợp hoặc ngẫu nhiên.
+5.  "aiExplanation": Viết giải thích ngắn về thí nghiệm dựa trên thông số bạn tạo.
+
+Ví dụ yêu cầu người dùng: "Thả một quả bóng bowling nặng 5kg từ độ cao 20m."
+JSON ví dụ:
+{
+  "experimentType": "free_fall",
+  "description": "Mô phỏng một quả bóng bowling rơi tự do từ độ cao 20m.",
+  "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 },
+  "objects": [ { "id": "object_1", "label": "Quả bóng bowling", "shape": "circle", "mass_kg": 5, "dimensions_m": { "radius": 0.11 }, "initialPosition_m": { "x": 2.5, "y_from_ground": 20 }, "physicalProperties": { "restitution": 0.1, "friction": 0.2, "frictionAir": 0.005 }, "color": "#2c3e50" } ],
+  "aiExplanation": "Thí nghiệm này mô phỏng một quả bóng bowling nặng 5kg được thả rơi từ độ cao 20 mét. Quan sát cách nó tăng tốc và va chạm với mặt đất."
+}
+Hãy đảm bảo bạn tuân thủ chặt chẽ định dạng JSON này.`;
+
+        const promptInput = document.getElementById('promptInput');
+        const sendPromptButton = document.getElementById('sendPromptButton');
+        const buttonText = document.getElementById('buttonText');
+        const buttonSpinner = document.getElementById('buttonSpinner');
+        const responseContainer = document.getElementById('responseContainer');
+        const statusMessage = document.getElementById('statusMessage');
+        const saveExperimentButton = document.getElementById('saveExperimentButton');
+        const aiExplanationContainer = document.getElementById('aiExplanationContainer');
+        const aiExplanationText = document.getElementById('aiExplanationText');
+        const userStatusText = document.getElementById('userStatusText');
+        const signOutButton = document.getElementById('signOutButton');
+        const loginForm = document.getElementById('loginForm');
+        const signUpForm = document.getElementById('signUpForm');
+        const authFormsContainer = document.getElementById('authFormsContainer');
+        const showSignUpLink = document.getElementById('showSignUpLink');
+        const showLoginLink = document.getElementById('showLoginLink');
+        const authStatus = document.getElementById('authStatus');
+        let currentExperimentData = null;
+
+        function updateGeneralStatus(element, type, message) { 
+            element.textContent = message;
+            element.className = 'text-xs text-center mt-2 min-h-[16px]';
+            if (type === 'error') element.classList.add('text-red-600');
+            else if (type === 'success') element.classList.add('text-green-600');
+            else element.classList.add('text-slate-600');
+        }
+        
+        onAuthStateChanged(auth, (user) => { 
+            if (user) { 
+                userStatusText.innerHTML = `Đã đăng nhập: <span class="font-semibold">${user.email}</span>`;
+                signOutButton.classList.remove('hidden');
+                authFormsContainer.classList.add('hidden');
+                saveExperimentButton.disabled = currentExperimentData === null; 
+            } else { 
+                userStatusText.textContent = "Bạn chưa đăng nhập.";
+                signOutButton.classList.add('hidden');
+                authFormsContainer.classList.remove('hidden');
+                loginForm.classList.add('active'); 
+                signUpForm.classList.remove('active');
+                saveExperimentButton.disabled = true;
+                currentExperimentData = null; 
+            }
+        });
+        showSignUpLink.addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.remove('active'); signUpForm.classList.add('active'); authStatus.textContent = ''; });
+        showLoginLink.addEventListener('click', (e) => { e.preventDefault(); signUpForm.classList.remove('active'); loginForm.classList.add('active'); authStatus.textContent = ''; });
+        signUpForm.addEventListener('submit', async (e) => { 
+            e.preventDefault(); const email = signUpEmail.value; const password = signUpPassword.value;
+            try { await createUserWithEmailAndPassword(auth, email, password); updateGeneralStatus(authStatus, 'success', 'Đăng ký thành công!'); signUpForm.reset(); } 
+            catch (error) { updateGeneralStatus(authStatus, 'error', `Lỗi đăng ký: ${error.message}`); }
+        });
+        loginForm.addEventListener('submit', async (e) => { 
+            e.preventDefault(); const email = loginEmail.value; const password = loginPassword.value;
+            try { await signInWithEmailAndPassword(auth, email, password); updateGeneralStatus(authStatus, 'success', 'Đăng nhập thành công!'); loginForm.reset(); } 
+            catch (error) { updateGeneralStatus(authStatus, 'error', `Lỗi đăng nhập: ${error.message}`); }
+        });
+        signOutButton.addEventListener('click', async () => { 
+            try { await signOut(auth); updateGeneralStatus(authStatus, 'info', 'Đã đăng xuất.'); } 
+            catch (error) { updateGeneralStatus(authStatus, 'error', `Lỗi đăng xuất: ${error.message}`); }
+        });
+
+        function updateAIStatus(type, message) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'mt-1 font-medium text-xs text-center min-h-[18px]';
+            if (type === 'error-text') statusMessage.classList.add('text-red-600');
+            else if (type === 'success-text') statusMessage.classList.add('text-green-600');
+            else if (type === 'info-text') statusMessage.classList.add('text-amber-600');
+            else statusMessage.classList.add('text-slate-600');
+         }
+        
+        sendPromptButton.addEventListener("click", async () => {
+            if (!aiModel) { updateAIStatus('error-text', "Mô hình AI chưa sẵn sàng."); return; }
+            const userPromptText = promptInput.value.trim();
+            if (!userPromptText) { updateAIStatus('error-text', "Vui lòng mô tả thí nghiệm!"); return; }
+
+            const fullPrompt = `${SYSTEM_PROMPT_FREE_FALL}\n\nYêu cầu người dùng: "${userPromptText}"`;
+
+            updateAIStatus('info-text', "AI đang phân tích yêu cầu thí nghiệm...");
+            responseContainer.innerHTML = '<div class="spinner-border text-blue-500" role="status"></div>';
+            aiExplanationContainer.classList.add('hidden');
+            currentExperimentData = null; 
+            if (auth.currentUser) saveExperimentButton.disabled = true;
+
+            buttonText.textContent = 'Đang xử lý...';
+            buttonSpinner.classList.remove('hidden');
+            sendPromptButton.disabled = true;
+
+            try {
+                console.log("Sending to Gemini:", fullPrompt);
+                const result = await aiModel.generateContent(fullPrompt);
+                const response = result.response;
+                const rawAIResponseText = response.text();
+                console.log("Raw AI Response Text:", rawAIResponseText);
+
+                let jsonStringToParse = rawAIResponseText;
+
+                // Step 1: Attempt to extract JSON from markdown block using regex
+                const markdownMatch = rawAIResponseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (markdownMatch && markdownMatch[1]) {
+                    jsonStringToParse = markdownMatch[1];
+                }
+                
+                // Step 2: Trim whitespace (important after regex or if no markdown block)
+                jsonStringToParse = jsonStringToParse.trim();
+
+                // Step 3: Fallback - if not a clear JSON object, try to find first '{' and last '}'
+                // This is useful if AI includes text outside markdown or no markdown at all.
+                if (!(jsonStringToParse.startsWith('{') && jsonStringToParse.endsWith('}'))) {
+                    console.warn("Initial cleaning/regex did not result in a clear JSON object string. Trying brace extraction...");
+                    const firstBrace = rawAIResponseText.indexOf('{'); // Search in original raw text
+                    const lastBrace = rawAIResponseText.lastIndexOf('}');
+                    if (firstBrace !== -1 && lastBrace > firstBrace) {
+                        jsonStringToParse = rawAIResponseText.substring(firstBrace, lastBrace + 1);
+                        jsonStringToParse = jsonStringToParse.trim(); // Trim again
+                        console.log("String after brace extraction:", jsonStringToParse);
+                    } else {
+                        console.warn("Could not find valid braces for JSON extraction in raw response.");
+                        // Keep jsonStringToParse as is, likely to fail parsing but error will be caught.
+                    }
+                }
+                
+                // Step 4: Remove potential BOM
+                if (jsonStringToParse.charCodeAt(0) === 0xFEFF) { // UTF-8 BOM
+                    jsonStringToParse = jsonStringToParse.substring(1);
+                    console.log("BOM removed.");
+                }
+
+                console.log("Attempting to parse as JSON:", "'" + jsonStringToParse + "'");
+                responseContainer.innerText = jsonStringToParse; // Display the string we're TRYING to parse
+
+                try {
+                    const parsedExperimentData = JSON.parse(jsonStringToParse);
+                    console.log("Successfully Parsed Experiment Data:", parsedExperimentData);
+                    
+                    if (parsedExperimentData.experimentType === "free_fall") {
+                        currentExperimentData = parsedExperimentData;
+                        handleAIDirectedExperiment(parsedExperimentData);
+                        updateAIStatus('success-text', "AI đã tạo cấu hình thí nghiệm. Đang khởi tạo mô phỏng...");
+                    } else {
+                        throw new Error("Loại thí nghiệm không được hỗ trợ hoặc JSON không đúng định dạng nhận được từ AI.");
+                    }
+                } catch (parseError) {
+                    console.error("Lỗi phân tích JSON từ AI:", parseError.message);
+                    console.error("String that failed parsing:", jsonStringToParse);
+                    updateAIStatus('error-text', "AI không trả về cấu hình thí nghiệm hợp lệ. Xem Console và phản hồi hiển thị.");
+                    responseContainer.innerText = `Lỗi JSON: ${parseError.message}\n\nChuỗi đã cố gắng phân tích:\n${jsonStringToParse}\n\nPhản hồi gốc từ AI:\n${rawAIResponseText}`;
+                    aiExplanationContainer.classList.add('hidden');
+                }
+
+            } catch (error) {
+                console.error("Lỗi khi gọi Gemini API:", error);
+                responseContainer.innerText = `Lỗi API: ${error.message}.`;
+                updateAIStatus('error-text', `Lỗi giao tiếp với AI: ${error.message}.`);
+                aiExplanationContainer.classList.add('hidden');
+            } finally {
+                buttonText.textContent = 'Tạo Thí Nghiệm';
+                buttonSpinner.classList.add('hidden');
+                sendPromptButton.disabled = false;
+                if (auth.currentUser && currentExperimentData) {
+                    saveExperimentButton.disabled = false;
+                }
+            }
+        });
+
+        function handleAIDirectedExperiment(experimentData) {
+            if (experimentData.aiExplanation) {
+                aiExplanationText.innerText = experimentData.aiExplanation;
+                aiExplanationContainer.classList.remove('hidden');
+            } else {
+                aiExplanationContainer.classList.add('hidden');
+            }
+            initMatterSimulationFromAI(experimentData);
+        }
+
+        saveExperimentButton.addEventListener('click', async () => { 
+            const user = auth.currentUser;
+            if (!user) { updateAIStatus('error-text', 'Bạn cần đăng nhập để lưu thí nghiệm.'); return; }
+            if (!currentExperimentData) { updateAIStatus('error-text', 'Không có dữ liệu thí nghiệm (JSON) để lưu.'); return; }
+            try {
+                const dataToSave = { userId: user.uid, userEmail: user.email, userInput: promptInput.value.trim(), experimentConfig: currentExperimentData, createdAt: serverTimestamp() };
+                const docRef = await addDoc(collection(db, "userExperiments"), dataToSave);
+                updateAIStatus('success-text', `Thí nghiệm đã được lưu (ID: ...${docRef.id.slice(-6)}).`);
+            } catch (error) { updateAIStatus('error-text', `Lỗi lưu thí nghiệm: ${error.message}`); }
+        });
+        
+        const matterStatus = document.getElementById('matterStatus');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const addBoxButton = document.getElementById('addBoxButton');
+        const addCircleButton = document.getElementById('addCircleButton');
+        const resetSimulationButton = document.getElementById('resetSimulationButton');
+        let engine, render, runner; 
+        const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Body } = Matter;
+
+        function initMatterSimulationFromAI(experimentData) {
+            if (!Matter || !experimentData) { matterStatus.textContent = "Lỗi: Dữ liệu thí nghiệm không hợp lệ hoặc Matter.js chưa tải."; return; }
+            matterStatus.textContent = "Đang khởi tạo mô phỏng từ AI...";
+            if (render && render.canvas) render.canvas.remove();
+            if (runner) Runner.stop(runner);
+            if (engine) Engine.clear(engine);
+            engine = Engine.create();
+            const world = engine.world;
+            const worldParams = experimentData.worldParameters;
+            engine.world.gravity.y = (worldParams.gravity_y_m_s2 / 9.81); 
+            const scale = worldParams.simulationScale_pixels_per_meter;
+            const containerWidth = canvasContainer.clientWidth;
+            let containerHeight = canvasContainer.clientHeight;
+            if (containerHeight <= 0 && containerWidth > 0) containerHeight = containerWidth * (3/4);
+            else if (containerHeight <= 0 && containerWidth <= 0) containerHeight = 300;
+            render = Render.create({ element: canvasContainer, engine: engine, options: { width: containerWidth, height: containerHeight, wireframes: false, background: '#e2e8f0' }});
+            runner = Runner.create();
+            const mouse = Mouse.create(render.canvas);
+            const mouseConstraint = MouseConstraint.create(engine, { mouse: mouse, constraint: { stiffness: 0.2, render: { visible: false } } });
+            Composite.add(world, mouseConstraint);
+            render.mouse = mouse;
+            const groundHeightPx = 50; 
+            const ground = Bodies.rectangle(containerWidth / 2, containerHeight - (groundHeightPx / 2), containerWidth, groundHeightPx, { isStatic: true, render: { fillStyle: '#475569' } });
+            Composite.add(world, [ground]);
+            experimentData.objects.forEach(objData => {
+                let body;
+                const props = objData.physicalProperties;
+                const initialX_px = objData.initialPosition_m.x * scale;
+                const options = { restitution: props.restitution, friction: props.friction, frictionAir: props.frictionAir, render: { fillStyle: objData.color || '#3498db' }};
+                if (objData.shape === "circle") {
+                    const radius_px = objData.dimensions_m.radius * scale;
+                    // Y in Matter.js is from top. y_from_ground is from bottom.
+                    // Adjusted Y so bottom of circle is at y_from_ground from the top of the ground visual.
+                    const adjustedY_px_circle = (containerHeight - groundHeightPx) - (objData.initialPosition_m.y_from_ground * scale) - radius_px;
+                    body = Bodies.circle(initialX_px, adjustedY_px_circle, radius_px, options);
+                } else if (objData.shape === "rectangle") {
+                    const width_px = objData.dimensions_m.width * scale;
+                    const height_px = objData.dimensions_m.height * scale;
+                    const adjustedY_px_rect = (containerHeight - groundHeightPx) - (objData.initialPosition_m.y_from_ground * scale) - (height_px / 2);
+                    body = Bodies.rectangle(initialX_px, adjustedY_px_rect, width_px, height_px, options);
+                }
+                if (body) { Body.setMass(body, objData.mass_kg); Composite.add(world, body); }
+            });
+            Render.run(render);
+            Runner.run(runner, engine);
+            matterStatus.textContent = experimentData.description || "Mô phỏng từ AI đã sẵn sàng!";
+            [addBoxButton, addCircleButton, resetSimulationButton].forEach(btn => btn.disabled = false);
+        }
+        
+        function addManualBody(type) {
+            if (!engine || !render) { matterStatus.textContent = "Mô phỏng chưa sẵn sàng."; return; }
+            const x = Math.random() * (render.options.width - 80) + 40;
+            const y = Math.random() * (render.options.height / 5);
+            let body;
+            const randomColor = `hsl(${Math.random() * 360}, 65%, 55%)`;
+            const options = { restitution: 0.5, friction: 0.1, render: { fillStyle: randomColor } };
+            if (type === 'box') { const size = (Math.random() * 20 + 12) ; body = Bodies.rectangle(x, y, size, size, options);
+            } else { const radius = (Math.random() * 12 + 8) ; body = Bodies.circle(x, y, radius, options); }
+            Body.setMass(body, 0.5); Composite.add(engine.world, body);
+        }
+
+        addBoxButton.addEventListener('click', () => addManualBody('box'));
+        addCircleButton.addEventListener('click', () => addManualBody('circle'));
+        resetSimulationButton.addEventListener('click', () => { 
+            if (currentExperimentData) { initMatterSimulationFromAI(currentExperimentData); matterStatus.textContent = "Mô phỏng từ AI đã được reset.";
+            } else if (engine) {
+                Engine.clear(engine); 
+                const groundHeightPx = 50; const ground = Bodies.rectangle(render.options.width / 2, render.options.height - (groundHeightPx / 2), render.options.width, groundHeightPx, { isStatic: true, render: { fillStyle: '#475569' } });
+                Composite.add(engine.world, [ground]); matterStatus.textContent = "Mô phỏng đã được dọn dẹp (thủ công).";
+            }
+         });
+            
+        function initPlaceholderSimulation() {
+            if (!Matter) return;
+            matterStatus.textContent = "Sẵn sàng nhận yêu cầu từ AI hoặc thêm vật thể thủ công.";
+            if (render && render.canvas) render.canvas.remove();
+            if (runner) Runner.stop(runner);
+            if (engine) Engine.clear(engine);
+            engine = Engine.create(); engine.world.gravity.y = 1; 
+            const containerWidth = canvasContainer.clientWidth;
+            let containerHeight = canvasContainer.clientHeight;
+            if (containerHeight <= 0 && containerWidth > 0) containerHeight = containerWidth * (3/4);
+            else if (containerHeight <= 0 && containerWidth <= 0) containerHeight = 300;
+            render = Render.create({ element: canvasContainer, engine: engine, options: { width: containerWidth, height: containerHeight, wireframes: false, background: '#e2e8f0' }});
+            runner = Runner.create();
+            const mouse = Mouse.create(render.canvas);
+            const mouseConstraint = MouseConstraint.create(engine, { mouse: mouse, constraint: { stiffness: 0.2, render: { visible: false } } });
+            Composite.add(engine.world, mouseConstraint); render.mouse = mouse;
+            const groundHeightPx = 50; const ground = Bodies.rectangle(containerWidth / 2, containerHeight - (groundHeightPx / 2), containerWidth, groundHeightPx, { isStatic: true, render: { fillStyle: '#475569' } });
+            Composite.add(engine.world, [ground]); Render.run(render); Runner.run(runner, engine);
+            [addBoxButton, addCircleButton, resetSimulationButton].forEach(btn => btn.disabled = false);
+        }
+        
+        if (typeof Matter !== 'undefined') { initPlaceholderSimulation(); 
+        } else { matterStatus.textContent = "Lỗi: Không tải được Matter.js."; [addBoxButton, addCircleButton, resetSimulationButton].forEach(btn => btn.disabled = true); }
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => { 
+            matterStatus.textContent = "Thay đổi kích thước...";
+            [addBoxButton, addCircleButton, resetSimulationButton].forEach(btn => btn.disabled = true);
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => { 
+                if (currentExperimentData) { initMatterSimulationFromAI(currentExperimentData);
+                } else if (engine) { initPlaceholderSimulation(); }
+            }, 300);
+        });
+    </script>
+</body>
+</html>
