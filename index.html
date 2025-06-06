@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Form Nhập Liệu)</title>
+    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Bản Ổn Định)</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style type="text/tailwindcss">
@@ -109,7 +109,7 @@
             <h2 class="text-xl font-semibold text-center mb-1 text-blue-700"><span role="img" aria-label="robot" class="mr-2">🤖</span>Điều Khiển AI</h2>
             <p class="text-center text-xs text-slate-500 mb-4">(Model: gemini-1.5-flash-latest)</p>
             
-            <div class="border-t border-slate-200 mt-4 pt-4">
+            <div class="border-t border-slate-200 pt-4">
                 <h3 class="text-md font-semibold text-center mb-3 text-slate-700">Tạo thí nghiệm theo mẫu</h3>
                 <select id="experimentTypeSelect" class="w-full p-2 border border-slate-300 rounded-md text-sm">
                     <option value="">-- Chọn loại thí nghiệm --</option>
@@ -160,10 +160,11 @@
             <h2 class="text-xl font-semibold text-center mb-2 text-blue-700"><span role="img" aria-label="atom" class="mr-2">⚛️</span>Không Gian Thí Nghiệm</h2>
             <div id="canvasContainer" class="w-full bg-slate-200 rounded-lg shadow-inner overflow-hidden mx-auto"></div>
             <p id="matterStatus" class="text-center text-xs text-slate-500 mt-2 min-h-[18px]">Đang tải Matter.js...</p>
-            <div class="mt-3 grid grid-cols-3 gap-2">
-                <button id="addBoxButton" class="py-2 px-2 bg-sky-500 text-white font-medium rounded-md hover:bg-sky-600 transition-colors text-xs shadow disabled:bg-sky-300">Thêm Hộp (Thủ công)</button>
-                <button id="addCircleButton" class="py-2 px-2 bg-teal-500 text-white font-medium rounded-md hover:bg-teal-600 transition-colors text-xs shadow disabled:bg-teal-300">Thêm Tròn (Thủ công)</button>
-                <button id="resetSimulationButton" class="py-2 px-2 bg-rose-500 text-white font-medium rounded-md hover:bg-rose-600 transition-colors text-xs shadow disabled:bg-rose-300">Reset Mô Phỏng</button>
+            <div class="mt-3 grid grid-cols-4 gap-2">
+                <button id="addBoxButton" class="py-2 px-2 bg-sky-500 text-white font-medium rounded-md hover:bg-sky-600 transition-colors text-xs shadow disabled:bg-sky-300">Thêm Hộp</button>
+                <button id="addCircleButton" class="py-2 px-2 bg-teal-500 text-white font-medium rounded-md hover:bg-teal-600 transition-colors text-xs shadow disabled:bg-teal-300">Thêm Tròn</button>
+                <button id="pauseResumeButton" class="py-2 px-2 bg-amber-500 text-white font-medium rounded-md hover:bg-amber-600 transition-colors text-xs shadow disabled:bg-amber-300" disabled>Tạm Dừng</button>
+                <button id="resetSimulationButton" class="py-2 px-2 bg-rose-500 text-white font-medium rounded-md hover:bg-rose-600 transition-colors text-xs shadow disabled:bg-rose-300">Reset</button>
             </div>
             
             <div id="chartsSection" class="mt-6 p-4 bg-white rounded-xl shadow-lg">
@@ -230,7 +231,6 @@
             console.error("Không thể khởi tạo Firebase AI.", e);
         }
 
-        // --- SYSTEM PROMPTS ---
         const COMBINED_SYSTEM_PROMPT_HEADER = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể.
 QUAN TRỌNG NHẤT: Trường "experimentType" BẮT BUỘC phải là một trong các giá trị sau: "free_fall", "projectile_motion", hoặc "inclined_plane". KHÔNG được sử dụng bất kỳ giá trị nào khác.
 Phản hồi của bạn BẮT BUỘC CHỈ LÀ MỘT CHUỖI JSON HỢP LỆ. KHÔNG thêm bất kỳ lời chào, giải thích, markdown, hoặc văn bản nào khác bên ngoài đối tượng JSON.
@@ -238,87 +238,18 @@ Phản hồi của bạn BẮT BUỘC CHỈ LÀ MỘT CHUỖI JSON HỢP LỆ. K
 Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
 ---
 `;
-
-        const SYSTEM_PROMPT_FREE_FALL = `Loại thí nghiệm: RƠI TỰ DO
-"experimentType": "free_fall",
-Hướng dẫn cho "dimensions_m": Chỉ cung cấp "radius" nếu "shape" là "circle". Chỉ cung cấp "width" và "height" nếu "shape" là "rectangle".
-LƯU Ý QUAN TRỌNG cho "aiExplanation": KHÔNG sử dụng dấu ngoặc kép (") bên trong chuỗi giải thích. Hãy dùng dấu ngoặc đơn (') hoặc các từ đồng nghĩa thay thế.
+        const SYSTEM_PROMPT_FREE_FALL = `Loại thí nghiệm: RƠI TỰ DO ("experimentType": "free_fall")
+LƯU Ý QUAN TRỌNG cho "aiExplanation": KHÔNG sử dụng dấu ngoặc kép (") bên trong chuỗi giải thích.
 Cấu trúc JSON mẫu:
-{
-  "experimentType": "free_fall",
-  "description": "Mô tả ngắn về thí nghiệm.",
-  "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 },
-  "objects": [
-    {
-      "id": "object_1",
-      "label": "Tên vật",
-      "shape": "circle",
-      "mass_kg": 0.5,
-      "dimensions_m": { "radius": 0.1 },
-      "initialPosition_m": { "x": 2.5, "y_from_ground": 10 },
-      "physicalProperties": { "restitution": 0.6, "friction": 0.1, "frictionAir": 0.01 },
-      "color": "#3498db"
-    }
-  ],
-  "aiExplanation": "Giải thích ngắn về thí nghiệm và các thông số."
-}`;
-        const SYSTEM_PROMPT_PROJECTILE_MOTION = `Loại thí nghiệm: CHUYỂN ĐỘNG NÉM
-"experimentType": "projectile_motion",
-LƯU Ý QUAN TRỌNG cho "initialVelocity_m_s": Nếu người dùng cung cấp độ lớn và góc, bạn BẮT BUỘC phải TỰ TÍNH TOÁN giá trị số của 'vx' và 'vy' rồi điền vào. Ví dụ, với vận tốc 10m/s và góc 30 độ, bạn phải tính vx = 10 * cos(30) ≈ 8.66 và vy = 10 * sin(30) = 5. KHÔNG BAO GIỜ đặt biểu thức tính toán như '10 * Math.cos(...)' vào giá trị JSON.
+{ "experimentType": "free_fall", "description": "Mô tả ngắn về thí nghiệm.", "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 }, "objects": [ { "id": "object_1", "label": "Tên vật", "shape": "circle", "mass_kg": 0.5, "dimensions_m": { "radius": 0.1 }, "initialPosition_m": { "x": 2.5, "y_from_ground": 10 }, "physicalProperties": { "restitution": 0.6, "friction": 0.1, "frictionAir": 0.01 }, "color": "#3498db" } ], "aiExplanation": "Giải thích ngắn về thí nghiệm và các thông số." }`;
+        const SYSTEM_PROMPT_PROJECTILE_MOTION = `Loại thí nghiệm: CHUYỂN ĐỘNG NÉM ("experimentType": "projectile_motion")
+LƯU Ý QUAN TRỌNG cho "initialVelocity_m_s": Nếu người dùng cung cấp độ lớn và góc, bạn BẮT BUỘC phải TỰ TÍNH TOÁN giá trị số của 'vx' và 'vy' rồi điền vào. Ví dụ, với vận tốc 10m/s và góc 30 độ, bạn phải tính vx = 10 * cos(30) ≈ 8.66 và vy = 10 * sin(30) = 5. KHÔNG BAO GIỜ đặt biểu thức tính toán vào giá trị JSON.
 Cấu trúc JSON mẫu:
-{
-  "experimentType": "projectile_motion",
-  "description": "Mô tả ngắn về thí nghiệm ném.",
-  "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 },
-  "objects": [
-    {
-      "id": "object_1",
-      "label": "Vật ném",
-      "shape": "circle",
-      "mass_kg": 0.5,
-      "dimensions_m": { "radius": 0.1 },
-      "initialPosition_m": { "x": 0.5, "y_from_ground": 1.0 },
-      "initialVelocity_m_s": { "vx": 10, "vy": 5 },
-      "physicalProperties": { "restitution": 0.5, "friction": 0.05, "frictionAir": 0.005 },
-      "color": "#e74c3c"
-    }
-  ],
-  "aiExplanation": "Giải thích ngắn về thí nghiệm ném, quỹ đạo và các yếu tố ảnh hưởng."
-}`;
-        const SYSTEM_PROMPT_INCLINED_PLANE = `Loại thí nghiệm: MẶT PHẲNG NGHIÊNG
-"experimentType": "inclined_plane",
+{ "experimentType": "projectile_motion", "description": "Mô tả ngắn về thí nghiệm ném.", "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 }, "objects": [ { "id": "object_1", "label": "Vật ném", "shape": "circle", "mass_kg": 0.5, "dimensions_m": { "radius": 0.1 }, "initialPosition_m": { "x": 0.5, "y_from_ground": 1.0 }, "initialVelocity_m_s": { "vx": 10, "vy": 5 }, "physicalProperties": { "restitution": 0.5, "friction": 0.05, "frictionAir": 0.005 }, "color": "#e74c3c" } ], "aiExplanation": "Giải thích ngắn về thí nghiệm ném, quỹ đạo và các yếu tố ảnh hưởng." }`;
+        const SYSTEM_PROMPT_INCLINED_PLANE = `Loại thí nghiệm: MẶT PHẲNG NGHIÊNG ("experimentType": "inclined_plane")
 Hướng dẫn vị trí: Với mặt phẳng nghiêng xuống sang phải (góc âm), tâm của nó (initialPosition_m.x) nên ở bên trái (ví dụ x=3). Với mặt phẳng nghiêng xuống sang trái (góc dương), tâm của nó nên ở bên phải (ví dụ x=7). Vật trượt phải được đặt ở vị trí cao hơn trên mặt phẳng đó.
 Cấu trúc JSON mẫu:
-{
-  "experimentType": "inclined_plane",
-  "description": "Mô tả ngắn về thí nghiệm mặt phẳng nghiêng.",
-  "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 },
-  "objects": [
-    {
-      "id": "plane_1",
-      "label": "Mặt phẳng nghiêng",
-      "shape": "rectangle",
-      "isStatic": true,
-      "dimensions_m": { "width": 8, "height": 0.2 },
-      "initialPosition_m": { "x": 3, "y_from_ground": 3 },
-      "angle_degrees": -20,
-      "physicalProperties": { "friction": 0.1 },
-      "color": "#95a5a6"
-    },
-    {
-      "id": "block_1",
-      "label": "Khối hộp",
-      "shape": "rectangle",
-      "isStatic": false,
-      "mass_kg": 1,
-      "dimensions_m": { "width": 0.4, "height": 0.4 },
-      "initialPosition_m": { "x": 1.5, "y_from_ground": 5 },
-      "physicalProperties": { "restitution": 0.1, "friction": 0.2 },
-      "color": "#c0392b"
-    }
-  ],
-  "aiExplanation": "Giải thích về chuyển động của vật trên mặt phẳng nghiêng, vai trò của lực hấp dẫn, phản lực và lực ma sát. KHÔNG dùng dấu ngoặc kép."
-}`;
+{ "experimentType": "inclined_plane", "description": "Mô tả ngắn về thí nghiệm mặt phẳng nghiêng.", "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 }, "objects": [ { "id": "plane_1", "label": "Mặt phẳng nghiêng", "shape": "rectangle", "isStatic": true, "dimensions_m": { "width": 8, "height": 0.2 }, "initialPosition_m": { "x": 3, "y_from_ground": 3 }, "angle_degrees": -20, "physicalProperties": { "friction": 0.1 }, "color": "#95a5a6" }, { "id": "block_1", "label": "Khối hộp", "shape": "rectangle", "isStatic": false, "mass_kg": 1, "dimensions_m": { "width": 0.4, "height": 0.4 }, "initialPosition_m": { "x": 1.5, "y_from_ground": 5 }, "physicalProperties": { "restitution": 0.1, "friction": 0.2 }, "color": "#c0392b" } ], "aiExplanation": "Giải thích về chuyển động của vật trên mặt phẳng nghiêng, vai trò của lực hấp dẫn, phản lực và lực ma sát. KHÔNG dùng dấu ngoặc kép." }`;
 
         // --- DOM Elements & Global Variables ---
         const promptInput = document.getElementById('promptInput');
@@ -350,6 +281,7 @@ Cấu trúc JSON mẫu:
         const formProjectile = document.getElementById('formProjectile');
         const formIncline = document.getElementById('formIncline');
         const generatePromptFromFormBtn = document.getElementById('generatePromptFromFormBtn');
+        const pauseResumeButton = document.getElementById('pauseResumeButton');
 
         let currentExperimentData = null;
         let engine, render, runner, trackedBody = null;
@@ -357,6 +289,7 @@ Cấu trúc JSON mẫu:
         let simulationTime = 0;
         let lastTimestamp = 0;
         let isChartRecording = false;
+        let isPaused = false;
         let sleepCounter = 0;
         const SLEEP_THRESHOLD_COUNT = 120;
         const SLEEP_SPEED_THRESHOLD = 0.1; 
@@ -674,7 +607,7 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
         }
 
         function updateChartData() {
-            if (!isChartRecording || !trackedBody || !currentExperimentData || !render) return;
+            if (isPaused || !isChartRecording || !trackedBody || !currentExperimentData || !render) return;
 
             if (trackedBody.speed < SLEEP_SPEED_THRESHOLD) {
                 sleepCounter++;
@@ -827,7 +760,7 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             Render.run(render);
             Runner.run(runner, engine);
             matterStatus.textContent = experimentData.description || "Mô phỏng từ AI đã sẵn sàng!";
-            [addBoxButton, addCircleButton, resetSimulationButton].forEach(btn => btn.disabled = false);
+            [addBoxButton, addCircleButton, resetSimulationButton, pauseResumeButton].forEach(btn => btn.disabled = false);
         }
         
         function addManualBody(type) { /* ... giữ nguyên ... */ }
@@ -838,6 +771,9 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             trackedBody = null;
             simulationTime = 0;
             lastTimestamp = 0;
+            pauseResumeButton.disabled = true;
+            isPaused = false;
+            pauseResumeButton.textContent = 'Tạm Dừng';
             if (currentExperimentData) {
                 initMatterSimulationFromAI(currentExperimentData);
             } else if (engine) {
@@ -857,6 +793,9 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             trackedBody = null;
             simulationTime = 0;
             lastTimestamp = 0;
+            pauseResumeButton.disabled = true;
+            isPaused = false;
+            pauseResumeButton.textContent = 'Tạm Dừng';
             
             if (render && render.canvas) render.canvas.remove();
             if (runner) Runner.stop(runner);
@@ -902,7 +841,7 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
         let resizeTimeout;
         window.addEventListener('resize', () => { 
             matterStatus.textContent = "Thay đổi kích thước...";
-            [addBoxButton, addCircleButton, resetSimulationButton].forEach(btn => btn.disabled = true);
+            [addBoxButton, addCircleButton, resetSimulationButton, pauseResumeButton].forEach(btn => btn.disabled = true);
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => { 
                 if (currentExperimentData) { initMatterSimulationFromAI(currentExperimentData); } 
@@ -950,6 +889,23 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             setTimeout(() => {
                 promptInput.classList.remove('ring-2', 'ring-green-500');
             }, 1500);
+        });
+
+        pauseResumeButton.addEventListener('click', () => {
+            if (!runner) return;
+            isPaused = !isPaused;
+            runner.enabled = !isPaused; 
+
+            if (isPaused) {
+                pauseResumeButton.textContent = 'Tiếp Tục';
+                chartStatus.textContent = `Đã tạm dừng.`;
+            } else {
+                pauseResumeButton.textContent = 'Tạm Dừng';
+                lastTimestamp = performance.now(); 
+                if(isChartRecording) {
+                   chartStatus.textContent = "Đang ghi dữ liệu...";
+                }
+            }
         });
     </script>
 </body>
