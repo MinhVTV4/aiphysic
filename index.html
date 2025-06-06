@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Mặt Phẳng Nghiêng)</title>
+    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Thư Viện Cá Nhân)</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style type="text/tailwindcss">
@@ -52,6 +52,18 @@
             background-color: #9ca3af;
             cursor: not-allowed;
         }
+        /* Modal styles */
+        #savedExperimentsModal {
+            transition: opacity 0.3s ease;
+        }
+        #experimentsList li {
+            cursor: pointer;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        #experimentsList li:hover {
+            background-color: #f3f4f6;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 flex flex-col items-center min-h-screen p-3 sm:p-4 selection:bg-blue-200">
@@ -62,7 +74,12 @@
     </header>
 
     <section id="authSection" class="w-full max-w-md bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-6">
-        <h2 class="text-lg font-semibold text-center text-sky-700 mb-3">Tài Khoản Người Dùng</h2>
+        <div class="flex justify-between items-center mb-3">
+            <h2 class="text-lg font-semibold text-sky-700">Tài Khoản Người Dùng</h2>
+            <button id="showSavedExperimentsBtn" class="hidden text-xs bg-indigo-500 hover:bg-indigo-600 text-white py-1 px-3 rounded-md transition-colors">
+                Thí nghiệm đã lưu
+            </button>
+        </div>
         <div id="userStatusContainer" class="text-center text-sm mb-3">
             <p id="userStatusText">Đang tải trạng thái người dùng...</p>
             <button id="signOutButton" class="hidden mt-1 text-xs bg-rose-500 hover:bg-rose-600 text-white py-1 px-3 rounded-md transition-colors">Đăng Xuất</button>
@@ -131,6 +148,21 @@
             </div>
         </section>
     </main>
+
+    <!-- Modal cho Thí nghiệm đã lưu -->
+    <div id="savedExperimentsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-sky-700">Thí Nghiệm Của Bạn</h3>
+                <button id="closeModalBtn" class="text-2xl font-bold hover:text-red-500 transition-colors">&times;</button>
+            </div>
+            <div id="experimentsListContainer" class="max-h-80 overflow-y-auto">
+                <ul id="experimentsList">
+                    <!-- Các thí nghiệm đã lưu sẽ được chèn vào đây -->
+                </ul>
+            </div>
+        </div>
+    </div>
     
     <footer class="w-full max-w-6xl mt-8 mb-4 text-center text-xs text-slate-500">
         <p>&copy; 2024 - Phòng thí nghiệm Vật lý AI.</p>
@@ -141,7 +173,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
         import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-ai.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDMNnx2yS-yeH_N7m_pCaVInqV2RZG7HSY",
@@ -159,9 +191,77 @@
         const db = getFirestore(app);
 
         // --- SYSTEM PROMPTS ---
+        const SYSTEM_PROMPT_FREE_FALL = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể để sử dụng trong một công cụ mô phỏng vật lý 2D (dựa trên Matter.js). Phản hồi CHỈ được là JSON.
 
-        const SYSTEM_PROMPT_FREE_FALL = `... (giữ nguyên) ...`;
-        const SYSTEM_PROMPT_PROJECTILE_MOTION = `... (giữ nguyên) ...`;
+Loại thí nghiệm: RƠI TỰ DO
+Hướng dẫn cho "dimensions_m": Chỉ cung cấp "radius" nếu "shape" là "circle". Chỉ cung cấp "width" và "height" nếu "shape" là "rectangle".
+LƯU Ý QUAN TRỌNG cho "aiExplanation": KHÔNG sử dụng dấu ngoặc kép (") bên trong chuỗi giải thích. Hãy dùng dấu ngoặc đơn (') hoặc các từ đồng nghĩa thay thế.
+Cấu trúc JSON mẫu:
+{
+  "experimentType": "free_fall",
+  "description": "Mô tả ngắn về thí nghiệm.",
+  "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 },
+  "objects": [
+    {
+      "id": "object_1",
+      "label": "Tên vật",
+      "shape": "circle",
+      "mass_kg": 0.5,
+      "dimensions_m": {
+        "radius": 0.1
+      },
+      "initialPosition_m": {
+        "x": 2.5,
+        "y_from_ground": 10
+      },
+      "physicalProperties": {
+        "restitution": 0.6,
+        "friction": 0.1,
+        "frictionAir": 0.01
+      },
+      "color": "#3498db"
+    }
+  ],
+  "aiExplanation": "Giải thích ngắn về thí nghiệm và các thông số."
+}`;
+        const SYSTEM_PROMPT_PROJECTILE_MOTION = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể để sử dụng trong một công cụ mô phỏng vật lý 2D (dựa trên Matter.js). Phản hồi CHỈ được là JSON.
+
+Loại thí nghiệm: CHUYỂN ĐỘNG NÉM (NÉM XIÊN, NÉM NGANG)
+Hướng dẫn cho "dimensions_m": Chỉ cung cấp "radius" nếu "shape" là "circle". Chỉ cung cấp "width" và "height" nếu "shape" là "rectangle".
+LƯU Ý QUAN TRỌNG cho "aiExplanation": KHÔNG sử dụng dấu ngoặc kép (") bên trong chuỗi giải thích. Hãy dùng dấu ngoặc đơn (') hoặc các từ đồng nghĩa thay thế.
+LƯU Ý QUAN TRỌNG cho "initialVelocity_m_s": Nếu người dùng cung cấp độ lớn và góc, bạn BẮT BUỘC phải TỰ TÍNH TOÁN giá trị số của 'vx' và 'vy' rồi điền vào. Ví dụ, với vận tốc 10m/s và góc 30 độ, bạn phải tính vx = 10 * cos(30) ≈ 8.66 và vy = 10 * sin(30) = 5. KHÔNG BAO GIỜ đặt biểu thức tính toán như '10 * Math.cos(...)' vào giá trị JSON.
+Cấu trúc JSON mẫu:
+{
+  "experimentType": "projectile_motion",
+  "description": "Mô tả ngắn về thí nghiệm ném.",
+  "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 },
+  "objects": [
+    {
+      "id": "object_1",
+      "label": "Vật ném",
+      "shape": "circle",
+      "mass_kg": 0.5,
+      "dimensions_m": {
+        "radius": 0.1
+      },
+      "initialPosition_m": {
+        "x": 0.5,
+        "y_from_ground": 1.0
+      },
+      "initialVelocity_m_s": {
+        "vx": 10,
+        "vy": 5
+      },
+      "physicalProperties": {
+        "restitution": 0.5,
+        "friction": 0.05,
+        "frictionAir": 0.005
+      },
+      "color": "#e74c3c"
+    }
+  ],
+  "aiExplanation": "Giải thích ngắn về thí nghiệm ném, quỹ đạo và các yếu tố ảnh hưởng."
+}`;
         const SYSTEM_PROMPT_INCLINED_PLANE = `Bạn là một AI chuyên gia về vật lý. Nhiệm vụ là chuyển đổi yêu cầu về thí nghiệm trên MẶT PHẲNG NGHIÊNG thành JSON. Phản hồi CHỈ được là JSON.
 
 Loại thí nghiệm: MẶT PHẲNG NGHIÊNG
@@ -230,6 +330,11 @@ Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
         const showSignUpLink = document.getElementById('showSignUpLink');
         const showLoginLink = document.getElementById('showLoginLink');
         const authStatus = document.getElementById('authStatus');
+        const showSavedExperimentsBtn = document.getElementById('showSavedExperimentsBtn');
+        const savedExperimentsModal = document.getElementById('savedExperimentsModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const experimentsList = document.getElementById('experimentsList');
+        const experimentsListContainer = document.getElementById('experimentsListContainer');
         const chartStatus = document.getElementById('chartStatus');
         const exportHeightChartBtn = document.getElementById('exportHeightChart');
         const exportVelocityYChartBtn = document.getElementById('exportVelocityYChart');
@@ -260,6 +365,7 @@ Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
             if (user) { 
                 userStatusText.innerHTML = `Đã đăng nhập: <span class="font-semibold">${user.email}</span>`;
                 signOutButton.classList.remove('hidden');
+                showSavedExperimentsBtn.classList.remove('hidden');
                 authFormsContainer.style.display = 'none';
                 if (currentExperimentData) {
                     saveExperimentButton.disabled = false;
@@ -267,6 +373,7 @@ Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
             } else { 
                 userStatusText.textContent = "Bạn chưa đăng nhập.";
                 signOutButton.classList.add('hidden');
+                showSavedExperimentsBtn.classList.add('hidden');
                 authFormsContainer.style.display = 'block';
                 loginForm.classList.add('active'); 
                 signUpForm.classList.remove('active');
@@ -507,7 +614,7 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             }
 
             const scale = currentExperimentData.worldParameters.simulationScale_pixels_per_meter;
-            const groundLevelPx = render.options.height - 60; // Chiều cao mặt đất là 60
+            const groundLevelPx = render.options.height - 60;
 
             if (lastTimestamp === 0) lastTimestamp = performance.now();
             const currentTimestamp = performance.now();
