@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Va Chạm 2D)</title>
+    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Bản Ổn Định)</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style type="text/tailwindcss">
         .spinner-border { display: inline-block; width: 2rem; height: 2rem; vertical-align: text-bottom; border: .25em solid currentColor; border-right-color: transparent; border-radius: 50%; -webkit-animation: spinner-border .75s linear infinite; animation: spinner-border .75s linear infinite; }
         @keyframes spinner-border { to { transform: rotate(360deg); } }
         .spinner-sm { width: 1rem; height: 1rem; border-width: .2em; }
-        #matterJsSection { display: flex; flex-direction: column; }
-        #canvasContainer { flex-grow: 1; min-height: 300px; }
         .auth-form { display: none; } 
         .auth-form.active { display: block; }
         .structured-form { display: none; }
@@ -105,78 +103,80 @@
     </section>
 
     <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6 px-2 flex-grow">
-        <section id="aiControlsSection" class="bg-white p-5 rounded-xl shadow-xl lg:col-span-1 order-2 lg:order-1 flex flex-col">
-            <h2 class="text-xl font-semibold text-center mb-1 text-blue-700"><span role="img" aria-label="robot" class="mr-2">🤖</span>Điều Khiển AI</h2>
-            <p class="text-center text-xs text-slate-500 mb-4">(Model: gemini-1.5-flash-latest)</p>
-            
-            <div class="border-t border-slate-200 pt-4">
-                <h3 class="text-md font-semibold text-center mb-3 text-slate-700">Tạo thí nghiệm theo mẫu</h3>
-                <select id="experimentTypeSelect" class="w-full p-2 border border-slate-300 rounded-md text-sm">
-                    <option value="">-- Chọn loại thí nghiệm --</option>
-                    <option value="free_fall">Rơi tự do</option>
-                    <option value="projectile">Ném xiên / Ném ngang</option>
-                    <option value="incline">Mặt phẳng nghiêng</option>
-                    <option value="collision">Va chạm</option>
-                </select>
+        <div class="lg:col-span-1 lg:h-[calc(100vh-22rem)] lg:overflow-y-auto pr-2">
+            <section id="aiControlsSection" class="bg-white p-5 rounded-xl shadow-xl flex flex-col">
+                <h2 class="text-xl font-semibold text-center mb-1 text-blue-700"><span role="img" aria-label="robot" class="mr-2">🤖</span>Điều Khiển AI</h2>
+                <p class="text-center text-xs text-slate-500 mb-4">(Model: gemini-1.5-flash-latest)</p>
+                
+                <div class="border-t border-slate-200 pt-4">
+                    <h3 class="text-md font-semibold text-center mb-3 text-slate-700">Tạo thí nghiệm theo mẫu</h3>
+                    <select id="experimentTypeSelect" class="w-full p-2 border border-slate-300 rounded-md text-sm">
+                        <option value="">-- Chọn loại thí nghiệm --</option>
+                        <option value="free_fall">Rơi tự do</option>
+                        <option value="projectile">Ném xiên / Ném ngang</option>
+                        <option value="incline">Mặt phẳng nghiêng</option>
+                        <option value="collision">Va chạm</option>
+                    </select>
 
-                <form id="formFreeFall" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
-                    <div><label class="block text-xs font-medium text-slate-600">Khối lượng vật (kg)</label><input type="number" id="ff_mass" value="1" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div><label class="block text-xs font-medium text-slate-600">Độ cao thả (m)</label><input type="number" id="ff_height" value="10" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                </form>
+                    <form id="formFreeFall" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
+                        <div><label class="block text-xs font-medium text-slate-600">Khối lượng vật (kg)</label><input type="number" id="ff_mass" value="1" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div><label class="block text-xs font-medium text-slate-600">Độ cao thả (m)</label><input type="number" id="ff_height" value="10" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    </form>
 
-                <form id="formProjectile" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
-                    <div><label class="block text-xs font-medium text-slate-600">Khối lượng vật (kg)</label><input type="number" id="p_mass" value="1" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div><label class="block text-xs font-medium text-slate-600">Vận tốc ban đầu (m/s)</label><input type="number" id="p_velocity" value="15" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div><label class="block text-xs font-medium text-slate-600">Góc bắn (độ)</label><input type="number" id="p_angle" value="30" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div><label class="block text-xs font-medium text-slate-600">Độ cao ban đầu (m)</label><input type="number" id="p_height" value="0" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                </form>
+                    <form id="formProjectile" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
+                        <div><label class="block text-xs font-medium text-slate-600">Khối lượng vật (kg)</label><input type="number" id="p_mass" value="1" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div><label class="block text-xs font-medium text-slate-600">Vận tốc ban đầu (m/s)</label><input type="number" id="p_velocity" value="15" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div><label class="block text-xs font-medium text-slate-600">Góc bắn (độ)</label><input type="number" id="p_angle" value="30" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div><label class="block text-xs font-medium text-slate-600">Độ cao ban đầu (m)</label><input type="number" id="p_height" value="0" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    </form>
 
-                <form id="formIncline" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
-                    <div><label class="block text-xs font-medium text-slate-600">Góc nghiêng (độ)</label><input type="number" id="i_angle" value="25" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div><label class="block text-xs font-medium text-slate-600">Khối lượng vật (kg)</label><input type="number" id="i_mass" value="1" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div><label class="block text-xs font-medium text-slate-600">Hệ số ma sát</label><input type="number" id="i_friction" value="0.1" step="0.05" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                </form>
+                    <form id="formIncline" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
+                        <div><label class="block text-xs font-medium text-slate-600">Góc nghiêng (độ)</label><input type="number" id="i_angle" value="25" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div><label class="block text-xs font-medium text-slate-600">Khối lượng vật (kg)</label><input type="number" id="i_mass" value="1" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div><label class="block text-xs font-medium text-slate-600">Hệ số ma sát</label><input type="number" id="i_friction" value="0.1" step="0.05" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    </form>
 
-                <form id="formCollision" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
-                    <p class="text-sm font-semibold text-slate-800">Vật 1</p>
-                    <div><label class="block text-xs font-medium text-slate-600">Khối lượng (kg)</label><input type="number" id="c1_mass" value="2" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div><label class="block text-xs font-medium text-slate-600">Vận tốc Ox (m/s)</label><input type="number" id="c1_vx" value="5" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                        <div><label class="block text-xs font-medium text-slate-600">Vận tốc Oy (m/s)</label><input type="number" id="c1_vy" value="0" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    </div>
-                    <p class="text-sm font-semibold text-slate-800 pt-2 border-t mt-2">Vật 2</p>
-                    <div><label class="block text-xs font-medium text-slate-600">Khối lượng (kg)</label><input type="number" id="c2_mass" value="2" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div><label class="block text-xs font-medium text-slate-600">Vận tốc Ox (m/s)</label><input type="number" id="c2_vx" value="-5" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                        <div><label class="block text-xs font-medium text-slate-600">Vận tốc Oy (m/s)</label><input type="number" id="c2_vy" value="0" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    </div>
-                     <div class="pt-2"><label class="flex items-center text-xs font-medium text-slate-600"><input type="checkbox" id="c_elastic" class="rounded mr-2">Va chạm đàn hồi (nảy ra)</label></div>
-                </form>
+                    <form id="formCollision" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
+                        <p class="text-sm font-semibold text-slate-800">Vật 1</p>
+                        <div><label class="block text-xs font-medium text-slate-600">Khối lượng (kg)</label><input type="number" id="c1_mass" value="2" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="block text-xs font-medium text-slate-600">Vận tốc Ox (m/s)</label><input type="number" id="c1_vx" value="5" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                            <div><label class="block text-xs font-medium text-slate-600">Vận tốc Oy (m/s)</label><input type="number" id="c1_vy" value="0" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-800 pt-2 border-t mt-2">Vật 2</p>
+                        <div><label class="block text-xs font-medium text-slate-600">Khối lượng (kg)</label><input type="number" id="c2_mass" value="2" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="block text-xs font-medium text-slate-600">Vận tốc Ox (m/s)</label><input type="number" id="c2_vx" value="-5" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                            <div><label class="block text-xs font-medium text-slate-600">Vận tốc Oy (m/s)</label><input type="number" id="c2_vy" value="0" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        </div>
+                         <div class="pt-2"><label class="flex items-center text-xs font-medium text-slate-600"><input type="checkbox" id="c_elastic" class="rounded mr-2">Va chạm đàn hồi (nảy ra)</label></div>
+                    </form>
 
-                <button id="generatePromptFromFormBtn" class="mt-3 w-full bg-slate-600 text-white py-2 rounded-md hover:bg-slate-700 text-sm">Tạo Mô Tả & Điền Vào Ô Dưới</button>
-            </div>
-            
-            <div class="my-4 flex items-center"><div class="flex-grow border-t border-slate-300"></div><span class="px-2 text-sm text-slate-500">Hoặc</span><div class="flex-grow border-t border-slate-300"></div></div>
+                    <button id="generatePromptFromFormBtn" class="mt-3 w-full bg-slate-600 text-white py-2 rounded-md hover:bg-slate-700 text-sm">Tạo Mô Tả & Điền Vào Ô Dưới</button>
+                </div>
+                
+                <div class="my-4 flex items-center"><div class="flex-grow border-t border-slate-300"></div><span class="px-2 text-sm text-slate-500">Hoặc</span><div class="flex-grow border-t border-slate-300"></div></div>
 
-            <textarea id="promptInput" rows="4" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y text-sm shadow-sm mb-3" placeholder="Mô tả thí nghiệm bằng văn bản tự do..."></textarea>
-            
-            <div class="flex space-x-2 mb-3">
-                <button id="sendPromptButton" class="flex-grow py-2.5 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-150 ease-in-out text-sm">
-                    <span id="buttonText">Tạo Thí Nghiệm</span>
-                    <div id="buttonSpinner" class="spinner-sm spinner-border hidden" role="status"></div>
-                </button>
-                <button id="saveExperimentButton" title="Lưu cấu hình thí nghiệm hiện tại (JSON từ AI)" class="py-2.5 px-3 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-green-300 disabled:cursor-not-allowed transition-colors text-sm" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M7.5 2.813A2.5 2.5 0 005 5.237V14.763a2.5 2.5 0 002.5 2.424l8-1.23A2.5 2.5 0 0018 13.537V4.463a2.5 2.5 0 00-2.5-2.424l-8-1.23zM16.5 4.463v9.074l-8 1.23V5.693l8-1.23z"/><path d="M5 16.187A1 1 0 014 15.187V4.813a1 1 0 011.5-.866l8 1.231a1 1 0 01.5.866v9.074a1 1 0 01-1.5.866l-8-1.231zM6 5.877v8.246l7 .923V6.8l-7-.923z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
-                </button>
-            </div>
-            <p id="statusMessage" class="mt-1 font-medium text-xs text-center text-slate-600 min-h-[18px]"></p>
-            <div id="responseContainer" class="mt-1 p-3 border border-slate-200 bg-slate-50 rounded-lg min-h-[80px] whitespace-pre-wrap break-words text-xs text-slate-700 shadow-inner relative flex items-center justify-center transition-colors flex-grow overflow-auto">Phản hồi của AI sẽ hiển thị ở đây...</div>
-            <div id="aiExplanationContainer" class="hidden"><h4 class="font-semibold text-sm mb-1">Giải thích từ AI:</h4><p id="aiExplanationText" class="text-xs"></p></div>
-        </section>
+                <textarea id="promptInput" rows="4" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y text-sm shadow-sm mb-3" placeholder="Mô tả thí nghiệm bằng văn bản tự do..."></textarea>
+                
+                <div class="flex space-x-2 mb-3">
+                    <button id="sendPromptButton" class="flex-grow py-2.5 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-150 ease-in-out text-sm">
+                        <span id="buttonText">Tạo Thí Nghiệm</span>
+                        <div id="buttonSpinner" class="spinner-sm spinner-border hidden" role="status"></div>
+                    </button>
+                    <button id="saveExperimentButton" title="Lưu cấu hình thí nghiệm hiện tại (JSON từ AI)" class="py-2.5 px-3 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-green-300 disabled:cursor-not-allowed transition-colors text-sm" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M7.5 2.813A2.5 2.5 0 005 5.237V14.763a2.5 2.5 0 002.5 2.424l8-1.23A2.5 2.5 0 0018 13.537V4.463a2.5 2.5 0 00-2.5-2.424l-8-1.23zM16.5 4.463v9.074l-8 1.23V5.693l8-1.23z"/><path d="M5 16.187A1 1 0 014 15.187V4.813a1 1 0 011.5-.866l8 1.231a1 1 0 01.5.866v9.074a1 1 0 01-1.5.866l-8-1.231zM6 5.877v8.246l7 .923V6.8l-7-.923z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
+                    </button>
+                </div>
+                <p id="statusMessage" class="mt-1 font-medium text-xs text-center text-slate-600 min-h-[18px]"></p>
+                <div id="responseContainer" class="p-3 border border-slate-200 bg-slate-50 rounded-lg whitespace-pre-wrap break-words text-xs text-slate-700 shadow-inner relative flex items-center justify-center transition-colors min-h-[60px] max-h-40 overflow-y-auto">Phản hồi của AI sẽ hiển thị ở đây...</div>
+                <div id="aiExplanationContainer" class="hidden"><h4 class="font-semibold text-sm mb-1">Giải thích từ AI:</h4><p id="aiExplanationText" class="text-xs"></p></div>
+            </section>
+        </div>
 
-        <section id="matterJsSection" class="bg-white p-5 rounded-xl shadow-xl lg:col-span-2 order-1 lg:order-2 flex flex-col">
+        <section id="matterJsSection" class="bg-white p-5 rounded-xl shadow-xl lg:col-span-2 flex flex-col">
             <h2 class="text-xl font-semibold text-center mb-2 text-blue-700"><span role="img" aria-label="atom" class="mr-2">⚛️</span>Không Gian Thí Nghiệm</h2>
-            <div id="canvasContainer" class="w-full bg-slate-200 rounded-lg shadow-inner overflow-hidden mx-auto"></div>
+            <div id="canvasContainer" class="w-full bg-slate-200 rounded-lg shadow-inner overflow-hidden mx-auto flex-grow"></div>
             <p id="matterStatus" class="text-center text-xs text-slate-500 mt-2 min-h-[18px]">Đang tải Matter.js...</p>
             <div class="mt-3 grid grid-cols-4 gap-2">
                 <button id="addBoxButton" class="py-2 px-2 bg-sky-500 text-white font-medium rounded-md hover:bg-sky-600 transition-colors text-xs shadow disabled:bg-sky-300">Thêm Hộp</button>
