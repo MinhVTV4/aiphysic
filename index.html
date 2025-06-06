@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Va Chạm)</title>
+    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Va Chạm 2D)</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style type="text/tailwindcss">
@@ -140,10 +140,16 @@
                 <form id="formCollision" class="structured-form mt-3 space-y-2 p-3 bg-slate-50 rounded-lg">
                     <p class="text-sm font-semibold text-slate-800">Vật 1</p>
                     <div><label class="block text-xs font-medium text-slate-600">Khối lượng (kg)</label><input type="number" id="c1_mass" value="2" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div><label class="block text-xs font-medium text-slate-600">Vận tốc ban đầu (m/s)</label><input type="number" id="c1_vx" value="5" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <p class="text-sm font-semibold text-slate-800 pt-2 border-t">Vật 2</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><label class="block text-xs font-medium text-slate-600">Vận tốc Ox (m/s)</label><input type="number" id="c1_vx" value="5" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div><label class="block text-xs font-medium text-slate-600">Vận tốc Oy (m/s)</label><input type="number" id="c1_vy" value="0" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-800 pt-2 border-t mt-2">Vật 2</p>
                     <div><label class="block text-xs font-medium text-slate-600">Khối lượng (kg)</label><input type="number" id="c2_mass" value="2" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
-                    <div><label class="block text-xs font-medium text-slate-600">Vận tốc ban đầu (m/s)</label><input type="number" id="c2_vx" value="-5" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><label class="block text-xs font-medium text-slate-600">Vận tốc Ox (m/s)</label><input type="number" id="c2_vx" value="-5" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                        <div><label class="block text-xs font-medium text-slate-600">Vận tốc Oy (m/s)</label><input type="number" id="c2_vy" value="0" class="w-full mt-1 p-1.5 text-sm rounded-md"></div>
+                    </div>
                      <div class="pt-2"><label class="flex items-center text-xs font-medium text-slate-600"><input type="checkbox" id="c_elastic" class="rounded mr-2">Va chạm đàn hồi (nảy ra)</label></div>
                 </form>
 
@@ -738,18 +744,20 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             render.mouse = mouse;
             
             const ground = Bodies.rectangle(containerWidth / 2, containerHeight, containerWidth, 60, { isStatic: true, render: { fillStyle: '#475569' } });
-            Composite.add(world, [ground]);
+            if (experimentData.experimentType !== 'collision') {
+                Composite.add(world, [ground]);
+            }
 
             experimentData.objects.forEach((objData) => {
                 let body;
                 const props = objData.physicalProperties || {}; 
                 const initialX_px = (objData.initialPosition_m.x * scale);
                 
-                let y_position;
+                let y_position_px;
                 if (experimentData.experimentType === 'collision') {
-                    y_position = containerHeight / 2; // Luôn đặt ở giữa cho va chạm
+                    y_position_px = containerHeight / 2;
                 } else {
-                    y_position = containerHeight - 60 - (objData.initialPosition_m.y_from_ground * scale);
+                    y_position_px = containerHeight - 60 - (objData.initialPosition_m.y_from_ground * scale);
                 }
 
                 const options = {
@@ -763,12 +771,12 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
                 if (objData.shape === "rectangle") {
                     const width_px = objData.dimensions_m.width * scale;
                     const height_px = objData.dimensions_m.height * scale;
-                    if (!options.isStatic) y_position -= height_px / 2;
-                    body = Bodies.rectangle(initialX_px, y_position, width_px, height_px, options);
+                    if (!options.isStatic && experimentData.experimentType !== 'collision') y_position_px -= height_px / 2;
+                    body = Bodies.rectangle(initialX_px, y_position_px, width_px, height_px, options);
                 } else { 
                     const radius_px = objData.dimensions_m.radius * scale;
-                    if (!options.isStatic) y_position -= radius_px;
-                    body = Bodies.circle(initialX_px, y_position, radius_px, options);
+                    if (!options.isStatic && experimentData.experimentType !== 'collision') y_position_px -= radius_px;
+                    body = Bodies.circle(initialX_px, y_position_px, radius_px, options);
                 }
 
                 if (body) {
@@ -919,11 +927,13 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
                 case 'collision':
                     const c1_mass = document.getElementById('c1_mass').value || 1;
                     const c1_vx = document.getElementById('c1_vx').value || 5;
+                    const c1_vy = document.getElementById('c1_vy').value || 0;
                     const c2_mass = document.getElementById('c2_mass').value || 1;
                     const c2_vx = document.getElementById('c2_vx').value || -5;
+                    const c2_vy = document.getElementById('c2_vy').value || 0;
                     const isElastic = document.getElementById('c_elastic').checked;
                     const collisionType = isElastic ? 'đàn hồi' : 'mềm';
-                    promptText = `Một vật ${c1_mass}kg có vận tốc ${c1_vx}m/s va chạm ${collisionType} với một vật ${c2_mass}kg có vận tốc ${c2_vx}m/s.`;
+                    promptText = `Một vật ${c1_mass}kg có vận tốc (vx=${c1_vx}, vy=${c1_vy}) va chạm ${collisionType} với một vật ${c2_mass}kg có vận tốc (vx=${c2_vx}, vy=${c2_vy}).`;
                     break;
                 default:
                     alert('Vui lòng chọn một loại thí nghiệm.');
