@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Biểu Đồ Thời Gian Thực)</title>
+    <title>Firebase AI Logic & Matter.js - Thí Nghiệm Vật Lý AI (Mặt Phẳng Nghiêng)</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <!-- Thư viện Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style type="text/tailwindcss">
         .spinner-border { display: inline-block; width: 2rem; height: 2rem; vertical-align: text-bottom; border: .25em solid currentColor; border-right-color: transparent; border-radius: 50%; -webkit-animation: spinner-border .75s linear infinite; animation: spinner-border .75s linear infinite; }
@@ -24,17 +23,16 @@
             font-size: 0.8rem;
             color: #4338ca;
         }
-        /* CSS cho khu vực biểu đồ */
         #chartsSection {
-            margin-top: 1.5rem; /* mt-6 */
-            padding: 1rem; /* p-4 */
+            margin-top: 1.5rem;
+            padding: 1rem;
             background-color: white;
-            border-radius: 0.75rem; /* rounded-xl */
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-lg */
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
         .chart-container {
             position: relative;
-            height: 200px; /* Điều chỉnh chiều cao nếu cần */
+            height: 200px;
             width: 100%;
         }
         .export-btn {
@@ -63,7 +61,6 @@
         </h1>
     </header>
 
-    <!-- Phần Xác thực Người dùng -->
     <section id="authSection" class="w-full max-w-md bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-6">
         <h2 class="text-lg font-semibold text-center text-sky-700 mb-3">Tài Khoản Người Dùng</h2>
         <div id="userStatusContainer" class="text-center text-sm mb-3">
@@ -93,7 +90,7 @@
         <section id="aiControlsSection" class="bg-white p-5 rounded-xl shadow-xl lg:col-span-1 order-2 lg:order-1 flex flex-col">
             <h2 class="text-xl font-semibold text-center mb-1 text-blue-700"><span role="img" aria-label="robot" class="mr-2">🤖</span>Điều Khiển AI</h2>
             <p class="text-center text-xs text-slate-500 mb-4">(Model: gemini-1.5-flash-latest)</p>
-            <textarea id="promptInput" rows="4" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y text-sm shadow-sm mb-3" placeholder="Mô tả thí nghiệm, ví dụ: 'Thả quả táo 0.2kg từ cao 10m' hoặc 'Ném hòn đá 0.5kg với vận tốc 10m/s góc 30 độ từ mặt đất'"></textarea>
+            <textarea id="promptInput" rows="4" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y text-sm shadow-sm mb-3" placeholder="Mô tả thí nghiệm, ví dụ: 'Thả một khối hộp trượt trên mặt phẳng nghiêng 30 độ'"></textarea>
             <div class="flex space-x-2 mb-3">
                 <button id="sendPromptButton" class="flex-grow py-2.5 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-150 ease-in-out text-sm">
                     <span id="buttonText">Tạo Thí Nghiệm</span>
@@ -118,7 +115,6 @@
                 <button id="resetSimulationButton" class="py-2 px-2 bg-rose-500 text-white font-medium rounded-md hover:bg-rose-600 transition-colors text-xs shadow disabled:bg-rose-300">Reset Mô Phỏng</button>
             </div>
             
-            <!-- Khu vực hiển thị biểu đồ -->
             <div id="chartsSection" class="mt-6 p-4 bg-white rounded-xl shadow-lg">
                 <h3 class="text-md font-semibold text-center text-sky-700 mb-3">Đồ Thị Dữ Liệu</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -161,6 +157,8 @@
         const aiModel = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" });
         const auth = getAuth(app);
         const db = getFirestore(app);
+
+        // --- SYSTEM PROMPTS ---
 
         const SYSTEM_PROMPT_FREE_FALL = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể để sử dụng trong một công cụ mô phỏng vật lý 2D (dựa trên Matter.js). Phản hồi CHỈ được là JSON.
 
@@ -233,14 +231,57 @@ Cấu trúc JSON mẫu:
   ],
   "aiExplanation": "Giải thích ngắn về thí nghiệm ném, quỹ đạo và các yếu tố ảnh hưởng."
 }`;
+        const SYSTEM_PROMPT_INCLINED_PLANE = `Bạn là một AI chuyên gia về vật lý. Nhiệm vụ là chuyển đổi yêu cầu về thí nghiệm trên MẶT PHẲNG NGHIÊNG thành JSON. Phản hồi CHỈ được là JSON.
+
+Loại thí nghiệm: MẶT PHẲNG NGHIÊNG
+Cấu trúc JSON mẫu:
+{
+  "experimentType": "inclined_plane",
+  "description": "Mô tả ngắn về thí nghiệm mặt phẳng nghiêng.",
+  "worldParameters": { "gravity_y_m_s2": 9.81, "simulationScale_pixels_per_meter": 50 },
+  "objects": [
+    {
+      "id": "plane_1",
+      "label": "Mặt phẳng nghiêng",
+      "shape": "rectangle",
+      "isStatic": true,
+      "dimensions_m": { "width": 8, "height": 0.2 },
+      "initialPosition_m": { "x": 4, "y_from_ground": 3 },
+      "angle_degrees": -20,
+      "physicalProperties": { "friction": 0.1 },
+      "color": "#95a5a6"
+    },
+    {
+      "id": "block_1",
+      "label": "Khối hộp",
+      "shape": "rectangle",
+      "isStatic": false,
+      "mass_kg": 1,
+      "dimensions_m": { "width": 0.4, "height": 0.4 },
+      "initialPosition_m": { "x": 1.5, "y_from_ground": 5.5 },
+      "physicalProperties": { "restitution": 0.1, "friction": 0.2 },
+      "color": "#c0392b"
+    }
+  ],
+  "aiExplanation": "Giải thích về chuyển động của vật trên mặt phẳng nghiêng, vai trò của lực hấp dẫn, phản lực và lực ma sát. KHÔNG dùng dấu ngoặc kép."
+}
+Hướng dẫn:
+1.  "experimentType": Luôn là "inclined_plane".
+2.  "objects": Phải có ít nhất 2 vật thể:
+    - Một mặt phẳng nghiêng: "shape": "rectangle", "isStatic": true, có thuộc tính "angle_degrees" (góc âm là nghiêng xuống từ trái qua phải).
+    - Một vật trượt: "isStatic": false.
+3.  Vị trí vật trượt: AI phải tự tính toán "initialPosition_m" cho vật trượt để nó nằm gọn trên mặt phẳng nghiêng.
+4.  "aiExplanation": KHÔNG sử dụng dấu ngoặc kép (") trong chuỗi này.`;
+
         const COMBINED_SYSTEM_PROMPT_HEADER = `Bạn là một AI chuyên gia về vật lý, có nhiệm vụ chuyển đổi các yêu cầu mô phỏng thí nghiệm vật lý bằng ngôn ngữ tự nhiên của người dùng thành một định dạng JSON cụ thể.
-Dựa vào yêu cầu của người dùng, hãy xác định loại thí nghiệm (ví dụ: "rơi tự do", "chuyển động ném") và sau đó tạo JSON theo cấu trúc tương ứng được mô tả dưới đây.
+Dựa vào yêu cầu của người dùng, hãy xác định loại thí nghiệm (ví dụ: "rơi tự do", "chuyển động ném", "mặt phẳng nghiêng") và sau đó tạo JSON theo cấu trúc tương ứng được mô tả dưới đây.
 Phản hồi của bạn BẮT BUỘC CHỈ LÀ MỘT CHUỖI JSON HỢP LỆ. KHÔNG thêm bất kỳ lời chào, giải thích, markdown, hoặc văn bản nào khác bên ngoài đối tượng JSON.
 
 Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
 ---
 `;
 
+        // --- DOM Elements & Global Variables ---
         const promptInput = document.getElementById('promptInput');
         const sendPromptButton = document.getElementById('sendPromptButton');
         const buttonText = document.getElementById('buttonText');
@@ -258,23 +299,122 @@ Dưới đây là các cấu trúc JSON cho từng loại thí nghiệm:
         const showSignUpLink = document.getElementById('showSignUpLink');
         const showLoginLink = document.getElementById('showLoginLink');
         const authStatus = document.getElementById('authStatus');
+        const chartStatus = document.getElementById('chartStatus');
+        const exportHeightChartBtn = document.getElementById('exportHeightChart');
+        const exportVelocityYChartBtn = document.getElementById('exportVelocityYChart');
+        
         let currentExperimentData = null;
+        let engine, render, runner, trackedBody = null;
+        let heightChart, velocityYChart;
+        let simulationTime = 0;
+        let lastTimestamp = 0;
+        let isChartRecording = false;
+        let sleepCounter = 0;
+        const SLEEP_THRESHOLD_COUNT = 120; // Khoảng 2 giây ở 60 FPS
+        const SLEEP_SPEED_THRESHOLD = 0.1; 
+        let fullChartData = { time: [], height: [], velocityY: [] }; 
 
-        function updateGeneralStatus(element, type, message) { /* ... giữ nguyên ... */ }
-        onAuthStateChanged(auth, (user) => { /* ... giữ nguyên ... */ });
-        showSignUpLink.addEventListener('click', (e) => { /* ... giữ nguyên ... */ });
-        showLoginLink.addEventListener('click', (e) => { /* ... giữ nguyên ... */ });
-        signUpForm.addEventListener('submit', async (e) => { /* ... giữ nguyên ... */ });
-        loginForm.addEventListener('submit', async (e) => { /* ... giữ nguyên ... */ });
-        signOutButton.addEventListener('click', async () => { /* ... giữ nguyên ... */ });
-        function updateAIStatus(type, message) { /* ... giữ nguyên ... */ }
+        const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Body, Events } = Matter;
+
+        // --- Auth & UI Functions ---
+        function updateGeneralStatus(element, type, message) { 
+            element.textContent = message;
+            element.className = 'text-xs text-center mt-2 min-h-[16px]';
+            if (type === 'error') element.classList.add('text-red-600');
+            else if (type === 'success') element.classList.add('text-green-600');
+            else element.classList.add('text-slate-600');
+        }
+        
+        onAuthStateChanged(auth, (user) => { 
+            if (user) { 
+                userStatusText.innerHTML = `Đã đăng nhập: <span class="font-semibold">${user.email}</span>`;
+                signOutButton.classList.remove('hidden');
+                authFormsContainer.style.display = 'none';
+                if (currentExperimentData) {
+                    saveExperimentButton.disabled = false;
+                }
+            } else { 
+                userStatusText.textContent = "Bạn chưa đăng nhập.";
+                signOutButton.classList.add('hidden');
+                authFormsContainer.style.display = 'block';
+                loginForm.classList.add('active'); 
+                signUpForm.classList.remove('active');
+                saveExperimentButton.disabled = true;
+                currentExperimentData = null; 
+            }
+        });
+
+        showSignUpLink.addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            loginForm.classList.remove('active'); 
+            signUpForm.classList.add('active'); 
+            authStatus.textContent = ''; 
+        });
+
+        showLoginLink.addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            signUpForm.classList.remove('active'); 
+            loginForm.classList.add('active'); 
+            authStatus.textContent = ''; 
+        });
+
+        signUpForm.addEventListener('submit', async (e) => { 
+            e.preventDefault(); 
+            const email = signUpEmail.value; 
+            const password = signUpPassword.value;
+            updateGeneralStatus(authStatus, 'info', 'Đang đăng ký...');
+            try { 
+                await createUserWithEmailAndPassword(auth, email, password); 
+                updateGeneralStatus(authStatus, 'success', 'Đăng ký thành công!'); 
+                signUpForm.reset(); 
+            } catch (error) { 
+                updateGeneralStatus(authStatus, 'error', `Lỗi đăng ký: ${error.code}`); 
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => { 
+            e.preventDefault(); 
+            const email = loginEmail.value; 
+            const password = loginPassword.value;
+            updateGeneralStatus(authStatus, 'info', 'Đang đăng nhập...');
+            try { 
+                await signInWithEmailAndPassword(auth, email, password); 
+                updateGeneralStatus(authStatus, 'success', 'Đăng nhập thành công!'); 
+                loginForm.reset(); 
+            } catch (error) { 
+                updateGeneralStatus(authStatus, 'error', `Lỗi đăng nhập: ${error.code}`); 
+            }
+        });
+
+        signOutButton.addEventListener('click', async () => { 
+            try { 
+                await signOut(auth); 
+                updateGeneralStatus(authStatus, 'info', 'Đã đăng xuất.'); 
+            } catch (error) { 
+                updateGeneralStatus(authStatus, 'error', `Lỗi đăng xuất: ${error.message}`); 
+            }
+        });
+
+        function updateAIStatus(type, message) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'mt-1 font-medium text-xs text-center min-h-[18px]';
+            if (type === 'error-text') statusMessage.classList.add('text-red-600');
+            else if (type === 'success-text') statusMessage.classList.add('text-green-600');
+            else statusMessage.classList.add('text-slate-600');
+        }
         
         sendPromptButton.addEventListener("click", async () => {
-            if (!aiModel) { updateAIStatus('error-text', "Mô hình AI chưa sẵn sàng."); return; }
+            if (!aiModel) { 
+                updateAIStatus('error-text', "Mô hình AI chưa sẵn sàng."); 
+                return; 
+            }
             const userPromptText = promptInput.value.trim();
-            if (!userPromptText) { updateAIStatus('error-text', "Vui lòng mô tả thí nghiệm!"); return; }
+            if (!userPromptText) { 
+                updateAIStatus('error-text', "Vui lòng mô tả thí nghiệm!"); 
+                return; 
+            }
 
-            const fullPrompt = `${COMBINED_SYSTEM_PROMPT_HEADER}\n${SYSTEM_PROMPT_FREE_FALL}\n\n---\n\n${SYSTEM_PROMPT_PROJECTILE_MOTION}\n\n---
+            const fullPrompt = `${COMBINED_SYSTEM_PROMPT_HEADER}\n${SYSTEM_PROMPT_FREE_FALL}\n\n---\n\n${SYSTEM_PROMPT_PROJECTILE_MOTION}\n\n---\n\n${SYSTEM_PROMPT_INCLINED_PLANE}\n\n---
 Yêu cầu người dùng: "${userPromptText}"
 Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`;
 
@@ -293,7 +433,7 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
                 const result = await aiModel.generateContent(fullPrompt);
                 const response = result.response;
                 const rawAIResponseText = response.text();
-                 let jsonStringToParse = rawAIResponseText;
+                let jsonStringToParse = rawAIResponseText;
                 const markdownMatch = rawAIResponseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
                 if (markdownMatch && markdownMatch[1]) {
                     jsonStringToParse = markdownMatch[1];
@@ -322,7 +462,9 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
 
                 try {
                     const parsedExperimentData = JSON.parse(jsonStringToParse);
-                    if (parsedExperimentData.experimentType === "free_fall" || parsedExperimentData.experimentType === "projectile_motion") {
+                    if (parsedExperimentData.experimentType === "free_fall" || 
+                        parsedExperimentData.experimentType === "projectile_motion" ||
+                        parsedExperimentData.experimentType === "inclined_plane") {
                         currentExperimentData = parsedExperimentData;
                         handleAIDirectedExperiment(parsedExperimentData); 
                         updateAIStatus('success-text', `AI đã tạo cấu hình cho: ${parsedExperimentData.experimentType}. Khởi tạo mô phỏng...`);
@@ -360,33 +502,13 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             }
             initMatterSimulationFromAI(experimentData);
         }
+        
         saveExperimentButton.addEventListener('click', async () => { /* ... giữ nguyên ... */ });
-        
-        const matterStatus = document.getElementById('matterStatus');
-        const canvasContainer = document.getElementById('canvasContainer');
-        const addBoxButton = document.getElementById('addBoxButton');
-        const addCircleButton = document.getElementById('addCircleButton');
-        const resetSimulationButton = document.getElementById('resetSimulationButton');
-        const chartStatus = document.getElementById('chartStatus');
-        const exportHeightChartBtn = document.getElementById('exportHeightChart');
-        const exportVelocityYChartBtn = document.getElementById('exportVelocityYChart');
-        
-        let engine, render, runner, trackedBody = null;
-        let heightChart, velocityYChart;
-        let simulationTime = 0;
-        let lastTimestamp = 0;
-        let isChartRecording = false;
-        let sleepCounter = 0;
-        const SLEEP_THRESHOLD_COUNT = 120; // Khoảng 2 giây ở 60 FPS
-        const SLEEP_SPEED_THRESHOLD = 0.1; 
-        let fullChartData = { time: [], height: [], velocityY: [] }; // Lưu trữ toàn bộ dữ liệu
-
-        const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Body, Events } = Matter;
 
         function initCharts() {
             destroyCharts(); 
             isChartRecording = true;
-            fullChartData = { time: [], height: [], velocityY: [] }; // Reset dữ liệu đầy đủ
+            fullChartData = { time: [], height: [], velocityY: [] };
 
             const commonChartOptions = {
                 responsive: true,
@@ -424,8 +546,8 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             velocityYChart = null;
             isChartRecording = false;
             chartStatus.textContent = "Chọn thí nghiệm để hiển thị đồ thị.";
-            exportHeightChartBtn.disabled = true;
-            exportVelocityYChartBtn.disabled = true;
+            if(exportHeightChartBtn) exportHeightChartBtn.disabled = true;
+            if(exportVelocityYChartBtn) exportVelocityYChartBtn.disabled = true;
         }
 
         function updateChartData() {
@@ -440,7 +562,6 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             if (sleepCounter > SLEEP_THRESHOLD_COUNT) {
                 isChartRecording = false;
                 chartStatus.textContent = "Đã dừng ghi: Vật thể đã dừng lại. Sẵn sàng tải xuống.";
-                // Cập nhật biểu đồ lần cuối với toàn bộ dữ liệu
                 heightChart.data.labels = fullChartData.time;
                 heightChart.data.datasets[0].data = fullChartData.height;
                 heightChart.update();
@@ -455,7 +576,7 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             }
 
             const scale = currentExperimentData.worldParameters.simulationScale_pixels_per_meter;
-            const groundLevelPx = render.options.height - 50; 
+            const groundLevelPx = render.options.height - 60; // Chiều cao mặt đất là 60
 
             if (lastTimestamp === 0) lastTimestamp = performance.now();
             const currentTimestamp = performance.now();
@@ -470,12 +591,10 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             const assumedFPS = 60; 
             const velocityY_m_s = -(bodyVy_px_tick * assumedFPS) / scale; 
 
-            // Luôn lưu vào dữ liệu đầy đủ
             fullChartData.time.push(simulationTime.toFixed(2));
             fullChartData.height.push(height_m.toFixed(2));
             fullChartData.velocityY.push(velocityY_m_s.toFixed(2));
 
-            // Chỉ hiển thị một phần dữ liệu trên biểu đồ trực tiếp để giữ hiệu năng
             const maxLivePoints = 150;
             heightChart.data.labels = fullChartData.time.slice(-maxLivePoints);
             heightChart.data.datasets[0].data = fullChartData.height.slice(-maxLivePoints);
@@ -518,47 +637,61 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             const mouseConstraint = MouseConstraint.create(engine, { mouse: mouse, constraint: { stiffness: 0.2, render: { visible: false } } });
             Composite.add(world, mouseConstraint);
             render.mouse = mouse;
-            const groundHeightPx = 50;
-            const ground = Bodies.rectangle(containerWidth / 2, containerHeight - (groundHeightPx / 2), containerWidth, groundHeightPx, { isStatic: true, render: { fillStyle: '#475569' } });
+            
+            const ground = Bodies.rectangle(containerWidth / 2, containerHeight, containerWidth, 60, { isStatic: true, render: { fillStyle: '#475569' } });
             Composite.add(world, [ground]);
 
             experimentData.objects.forEach((objData, index) => {
                 let body;
-                const props = objData.physicalProperties;
-                const initialX_px = objData.initialPosition_m.x * scale;
-                const options = { 
-                    restitution: props.restitution, 
-                    friction: props.friction, 
-                    frictionAir: props.frictionAir, 
+                const props = objData.physicalProperties || {}; 
+                const initialX_px = (objData.initialPosition_m.x * scale);
+                const initialY_px = containerHeight - 60 - (objData.initialPosition_m.y_from_ground * scale);
+
+                const options = {
+                    restitution: props.restitution || 0.5,
+                    friction: props.friction || 0.1,
+                    frictionAir: props.frictionAir || 0.01,
+                    isStatic: objData.isStatic || false,
                     render: { fillStyle: objData.color || '#3498db' }
                 };
-                let adjustedY_px;
 
-                if (objData.shape === "circle") {
-                    const radius_px = objData.dimensions_m.radius * scale;
-                    adjustedY_px = (containerHeight - groundHeightPx) - (objData.initialPosition_m.y_from_ground * scale) - radius_px;
-                    body = Bodies.circle(initialX_px, adjustedY_px, radius_px, options);
-                } else if (objData.shape === "rectangle") {
+                let y_position = initialY_px;
+
+                if (objData.shape === "rectangle") {
                     const width_px = objData.dimensions_m.width * scale;
                     const height_px = objData.dimensions_m.height * scale;
-                    adjustedY_px = (containerHeight - groundHeightPx) - (objData.initialPosition_m.y_from_ground * scale) - (height_px / 2);
-                    body = Bodies.rectangle(initialX_px, adjustedY_px, width_px, height_px, options);
+                    if (!options.isStatic) {
+                       y_position -= height_px / 2;
+                    }
+                    body = Bodies.rectangle(initialX_px, y_position, width_px, height_px, options);
+                } else { // Circle
+                    const radius_px = objData.dimensions_m.radius * scale;
+                    y_position -= radius_px;
+                    body = Bodies.circle(initialX_px, y_position, radius_px, options);
                 }
 
                 if (body) {
-                    Body.setMass(body, objData.mass_kg);
+                    if (objData.mass_kg && !options.isStatic) {
+                        Body.setMass(body, objData.mass_kg);
+                    }
+
+                    if (typeof objData.angle_degrees !== 'undefined') {
+                        const angle_rad = objData.angle_degrees * (Math.PI / 180);
+                        Body.setAngle(body, angle_rad);
+                    }
+                    
                     Composite.add(world, body);
-                    if (index === 0) trackedBody = body; 
+                    
+                    if (index === 0 && !body.isStatic) {
+                        trackedBody = body;
+                    } else if (!trackedBody && !body.isStatic) {
+                        trackedBody = body;
+                    }
 
                     if (experimentData.experimentType === "projectile_motion" && objData.initialVelocity_m_s) {
-                        let vx_m_s, vy_m_s;
-                        if (typeof objData.initialVelocity_m_s.vx !== 'undefined' && typeof objData.initialVelocity_m_s.vy !== 'undefined') {
-                            vx_m_s = objData.initialVelocity_m_s.vx; vy_m_s = objData.initialVelocity_m_s.vy;
-                        } else if (typeof objData.initialVelocity_m_s.magnitude !== 'undefined' && typeof objData.initialVelocity_m_s.angle_degrees !== 'undefined') {
-                            const magnitude = objData.initialVelocity_m_s.magnitude; const angle_rad = objData.initialVelocity_m_s.angle_degrees * (Math.PI / 180);
-                            vx_m_s = magnitude * Math.cos(angle_rad); vy_m_s = magnitude * Math.sin(angle_rad);
-                        } else { vx_m_s = 0; vy_m_s = 0; }
-                        const vx_px_s = vx_m_s * scale; const vy_px_s = -vy_m_s * scale;
+                        let { vx: vx_m_s = 0, vy: vy_m_s = 0 } = objData.initialVelocity_m_s;
+                        const vx_px_s = vx_m_s * scale; 
+                        const vy_px_s = -vy_m_s * scale;
                         const assumedFPS = 60;
                         Body.setVelocity(body, { x: vx_px_s / assumedFPS, y: vy_px_s / assumedFPS });
                     }
@@ -584,12 +717,11 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             lastTimestamp = 0;
             if (currentExperimentData) {
                 initMatterSimulationFromAI(currentExperimentData);
-                matterStatus.textContent = `Mô phỏng (${currentExperimentData.experimentType}) đã được reset.`;
             } else if (engine) {
                 Events.off(engine, 'afterUpdate', updateChartData);
                 Engine.clear(engine); 
-                const groundHeightPx = 50;
-                const ground = Bodies.rectangle(render.options.width / 2, render.options.height - (groundHeightPx / 2), render.options.width, groundHeightPx, { isStatic: true, render: { fillStyle: '#475569' } });
+                const groundHeightPx = 60;
+                const ground = Bodies.rectangle(render.options.width / 2, render.options.height, render.options.width, groundHeightPx, { isStatic: true, render: { fillStyle: '#475569' } });
                 Composite.add(engine.world, [ground]);
                 matterStatus.textContent = "Mô phỏng đã được dọn dẹp (thủ công).";
             }
@@ -613,8 +745,8 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             engine = Engine.create();
             engine.world.gravity.y = 1;
             const containerWidth = canvasContainer.clientWidth;
-            let containerHeight = containerHeight > 0 ? containerHeight : containerWidth * 0.75;
-            if (containerHeight <= 0) containerHeight = 300;
+            let containerHeight = containerWidth > 0 ? containerWidth * 0.75 : 450;
+            if (containerHeight <= 0) containerHeight = 450;
             
             render = Render.create({ element: canvasContainer, engine: engine, options: { width: containerWidth, height: containerHeight, wireframes: false, background: '#e2e8f0' }});
             runner = Runner.create();
@@ -622,8 +754,8 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             const mouseConstraint = MouseConstraint.create(engine, { mouse: mouse, constraint: { stiffness: 0.2, render: { visible: false } } });
             Composite.add(engine.world, mouseConstraint);
             render.mouse = mouse;
-            const groundHeightPx = 50;
-            const ground = Bodies.rectangle(containerWidth / 2, containerHeight - (groundHeightPx / 2), containerWidth, groundHeightPx, { isStatic: true, render: { fillStyle: '#475569' } });
+            const groundHeightPx = 60;
+            const ground = Bodies.rectangle(containerWidth / 2, containerHeight, containerWidth, groundHeightPx, { isStatic: true, render: { fillStyle: '#475569' } });
             Composite.add(engine.world, [ground]);
             Render.run(render);
             Runner.run(runner, engine);
