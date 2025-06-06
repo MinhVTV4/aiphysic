@@ -37,6 +37,23 @@
             height: 200px; /* Điều chỉnh chiều cao nếu cần */
             width: 100%;
         }
+        .export-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background-color: rgba(0, 119, 255, 0.7);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .export-btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 flex flex-col items-center min-h-screen p-3 sm:p-4 selection:bg-blue-200">
@@ -107,9 +124,11 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="chart-container">
                         <canvas id="heightChartCanvas"></canvas>
+                        <button id="exportHeightChart" class="export-btn" disabled>Tải xuống</button>
                     </div>
                     <div class="chart-container">
                         <canvas id="velocityYChartCanvas"></canvas>
+                        <button id="exportVelocityYChart" class="export-btn" disabled>Tải xuống</button>
                     </div>
                 </div>
                  <p id="chartStatus" class="text-center text-xs text-slate-500 mt-2 min-h-[18px]">Chọn thí nghiệm để hiển thị đồ thị.</p>
@@ -349,15 +368,25 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
         const addCircleButton = document.getElementById('addCircleButton');
         const resetSimulationButton = document.getElementById('resetSimulationButton');
         const chartStatus = document.getElementById('chartStatus');
+        const exportHeightChartBtn = document.getElementById('exportHeightChart');
+        const exportVelocityYChartBtn = document.getElementById('exportVelocityYChart');
         
         let engine, render, runner, trackedBody = null;
         let heightChart, velocityYChart;
         let simulationTime = 0;
         let lastTimestamp = 0;
+        let isChartRecording = false;
+        let sleepCounter = 0;
+        const SLEEP_THRESHOLD_COUNT = 120; // Khoảng 2 giây ở 60 FPS
+        const SLEEP_SPEED_THRESHOLD = 0.1; 
+        let fullChartData = { time: [], height: [], velocityY: [] }; // Lưu trữ toàn bộ dữ liệu
+
         const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Body, Events } = Matter;
 
         function initCharts() {
             destroyCharts(); 
+            isChartRecording = true;
+            fullChartData = { time: [], height: [], velocityY: [] }; // Reset dữ liệu đầy đủ
 
             const commonChartOptions = {
                 responsive: true,
@@ -383,7 +412,9 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
                 data: { labels: [], datasets: [{ label: 'Vận tốc theo Oy (m/s)', data: [], borderColor: 'rgb(255, 99, 132)', tension: 0.1 }] },
                 options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, y: { ...commonChartOptions.scales.y, title: { ...commonChartOptions.scales.y.title, text: 'Vận tốc Oy (m/s)'}}}}
             });
-            chartStatus.textContent = "Đang theo dõi dữ liệu...";
+            chartStatus.textContent = "Đang ghi dữ liệu...";
+            exportHeightChartBtn.disabled = true;
+            exportVelocityYChartBtn.disabled = true;
         }
 
         function destroyCharts() {
@@ -391,11 +422,37 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             if (velocityYChart) velocityYChart.destroy();
             heightChart = null;
             velocityYChart = null;
+            isChartRecording = false;
             chartStatus.textContent = "Chọn thí nghiệm để hiển thị đồ thị.";
+            exportHeightChartBtn.disabled = true;
+            exportVelocityYChartBtn.disabled = true;
         }
 
         function updateChartData() {
-            if (!trackedBody || !heightChart || !velocityYChart || !currentExperimentData || !render) return; // Thêm kiểm tra render
+            if (!isChartRecording || !trackedBody || !currentExperimentData || !render) return;
+
+            if (trackedBody.speed < SLEEP_SPEED_THRESHOLD) {
+                sleepCounter++;
+            } else {
+                sleepCounter = 0;
+            }
+
+            if (sleepCounter > SLEEP_THRESHOLD_COUNT) {
+                isChartRecording = false;
+                chartStatus.textContent = "Đã dừng ghi: Vật thể đã dừng lại. Sẵn sàng tải xuống.";
+                // Cập nhật biểu đồ lần cuối với toàn bộ dữ liệu
+                heightChart.data.labels = fullChartData.time;
+                heightChart.data.datasets[0].data = fullChartData.height;
+                heightChart.update();
+                
+                velocityYChart.data.labels = fullChartData.time;
+                velocityYChart.data.datasets[0].data = fullChartData.velocityY;
+                velocityYChart.update();
+
+                exportHeightChartBtn.disabled = false;
+                exportVelocityYChartBtn.disabled = false;
+                return;
+            }
 
             const scale = currentExperimentData.worldParameters.simulationScale_pixels_per_meter;
             const groundLevelPx = render.options.height - 50; 
@@ -409,26 +466,22 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             const bodyY_px = trackedBody.position.y;
             const bodyVy_px_tick = trackedBody.velocity.y;
 
-            // Tính toán độ cao của TÂM vật thể so với mặt đất
             const height_m = (groundLevelPx - bodyY_px) / scale;
-
             const assumedFPS = 60; 
             const velocityY_m_s = -(bodyVy_px_tick * assumedFPS) / scale; 
 
-            const maxDataPoints = 200;
-            if (heightChart.data.labels.length > maxDataPoints) {
-                heightChart.data.labels.shift();
-                heightChart.data.datasets[0].data.shift();
-                velocityYChart.data.labels.shift();
-                velocityYChart.data.datasets[0].data.shift();
-            }
+            // Luôn lưu vào dữ liệu đầy đủ
+            fullChartData.time.push(simulationTime.toFixed(2));
+            fullChartData.height.push(height_m.toFixed(2));
+            fullChartData.velocityY.push(velocityY_m_s.toFixed(2));
 
-            heightChart.data.labels.push(simulationTime.toFixed(2));
-            heightChart.data.datasets[0].data.push(height_m.toFixed(2));
+            // Chỉ hiển thị một phần dữ liệu trên biểu đồ trực tiếp để giữ hiệu năng
+            const maxLivePoints = 150;
+            heightChart.data.labels = fullChartData.time.slice(-maxLivePoints);
+            heightChart.data.datasets[0].data = fullChartData.height.slice(-maxLivePoints);
+            velocityYChart.data.labels = fullChartData.time.slice(-maxLivePoints);
+            velocityYChart.data.datasets[0].data = fullChartData.velocityY.slice(-maxLivePoints);
             
-            velocityYChart.data.labels.push(simulationTime.toFixed(2));
-            velocityYChart.data.datasets[0].data.push(velocityY_m_s.toFixed(2));
-
             heightChart.update('none'); 
             velocityYChart.update('none');
         }
@@ -440,6 +493,7 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             trackedBody = null; 
             simulationTime = 0; 
             lastTimestamp = 0; 
+            sleepCounter = 0;
 
             if (render && render.canvas) render.canvas.remove();
             if (runner) Runner.stop(runner);
@@ -539,7 +593,6 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
                 Composite.add(engine.world, [ground]);
                 matterStatus.textContent = "Mô phỏng đã được dọn dẹp (thủ công).";
             }
-            chartStatus.textContent = "Chọn thí nghiệm để hiển thị đồ thị.";
          });
             
         function initPlaceholderSimulation() {
@@ -560,9 +613,8 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             engine = Engine.create();
             engine.world.gravity.y = 1;
             const containerWidth = canvasContainer.clientWidth;
-            let containerHeight = canvasContainer.clientHeight;
-            if (containerHeight <= 0 && containerWidth > 0) containerHeight = Math.max(300, containerWidth * (3/4));
-            else if (containerHeight <= 0 && containerWidth <= 0) containerHeight = 300;
+            let containerHeight = containerHeight > 0 ? containerHeight : containerWidth * 0.75;
+            if (containerHeight <= 0) containerHeight = 300;
             
             render = Render.create({ element: canvasContainer, engine: engine, options: { width: containerWidth, height: containerHeight, wireframes: false, background: '#e2e8f0' }});
             runner = Runner.create();
@@ -577,6 +629,17 @@ Hãy xác định loại thí nghiệm và chỉ trả về JSON tương ứng.`
             Runner.run(runner, engine);
             [addBoxButton, addCircleButton, resetSimulationButton].forEach(btn => btn.disabled = false);
         }
+
+        function exportChart(chartInstance, filename) {
+            if (!chartInstance) return;
+            const a = document.createElement('a');
+            a.href = chartInstance.toBase64Image();
+            a.download = filename;
+            a.click();
+        }
+
+        exportHeightChartBtn.addEventListener('click', () => exportChart(heightChart, 'do-thi-do-cao.png'));
+        exportVelocityYChartBtn.addEventListener('click', () => exportChart(velocityYChart, 'do-thi-van-toc-y.png'));
         
         if (typeof Matter !== 'undefined') { initPlaceholderSimulation(); } 
         else { matterStatus.textContent = "Lỗi: Không tải được Matter.js."; [addBoxButton, addCircleButton, resetSimulationButton].forEach(btn => btn.disabled = true); }
